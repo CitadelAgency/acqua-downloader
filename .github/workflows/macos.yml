@@ -1,0 +1,38 @@
+name: macOS
+
+on:
+  push:
+    branches: [main, feat/macos]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: macos-${{ hashFiles('Cargo.lock') }}
+          restore-keys: macos-
+      - run: npm ci
+        working-directory: frontend
+      - run: cargo test --no-default-features --tests --no-fail-fast
+      - run: node --test extension/rules.test.js
+      - run: npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin --bundles dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Acqua-Downloader-macos
+          path: target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
