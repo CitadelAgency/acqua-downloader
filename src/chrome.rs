@@ -98,15 +98,15 @@ pub fn list_history(profile_dir: &Path, browser: &str, profile: &str) -> Result<
             }
             Err(_) => {
                 it.file_size = -1;
-                it.problem = "o arquivo parcial não existe mais".into();
+                it.problem = "the partial file no longer exists".into();
             }
         }
         if fetch::validate_url(&it.url).is_err() {
-            it.problem = "sem URL HTTP(S) válida".into();
+            it.problem = "no valid HTTP(S) URL".into();
         } else if it.total <= 0 {
-            it.problem = "tamanho total desconhecido".into();
+            it.problem = "unknown total size".into();
         } else if it.file_size > it.total {
-            it.problem = "arquivo parcial maior que o total".into();
+            it.problem = "partial file is larger than the total".into();
         }
     }
     Ok(items)
@@ -183,12 +183,12 @@ pub fn prepare(it: &Item) -> Result<Config> {
             fs::hard_link(current, &part).map_err(|e| {
                 Error::new(
                     "browser_in_use",
-                    format!("feche o navegador sem cancelar e tente novamente: {e}"),
+                    format!("close the browser without canceling and try again: {e}"),
                 )
             })?;
             return Err(Error::new(
                 "browser_in_use",
-                "parcial protegido por hard link; cancele no navegador e tente novamente",
+                "partial file is protected by a hard link; cancel it in the browser and try again",
             ));
         }
         system::rename_no_replace(current, &part)?;
@@ -196,7 +196,7 @@ pub fn prepare(it: &Item) -> Result<Config> {
         if system::in_use(&part) {
             return Err(Error::new(
                 "browser_in_use",
-                "o navegador ainda está usando o arquivo",
+                "the browser is still using the file",
             ));
         }
         if current.exists() {
@@ -206,7 +206,7 @@ pub fn prepare(it: &Item) -> Result<Config> {
             if !same_file(&mine, &other)? {
                 return Err(Error::new(
                     "not_same_file",
-                    "já existe outro parcial no destino",
+                    "another partial file already exists at the destination",
                 ));
             }
             drop(mine);

@@ -1,18 +1,22 @@
 [package]
 name = "dlm"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Segmented download manager for Windows"
 license = "MIT"
 repository = "https://github.com/CitadelAgency/dlm"
-default-run = "dlm"
+default-run = "acqua"
 
 [features]
 default = ["desktop"]
 desktop = ["dep:tauri", "dep:rfd", "dep:tauri-plugin-notification"]
 custom-protocol = ["tauri?/custom-protocol"]
 dev-tools = []
+
+[[bin]]
+name = "acqua"
+path = "src/main.rs"
 
 [[bin]]
 name = "dlm-bench"

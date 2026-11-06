@@ -2,10 +2,6 @@ import { DEFAULTS, shouldCapture, cookieHeader, baseName } from './rules.js'
 
 const HOST = 'com.dlm.host'
 
-function t(pt, en) {
-  return (navigator.language || '').toLowerCase().startsWith('pt') ? pt : en
-}
-
 async function config() {
   const { cfg } = await chrome.storage.local.get('cfg')
   return { ...DEFAULTS, ...(cfg || {}) }
@@ -37,7 +33,7 @@ async function refreshFromApp() {
 chrome.runtime.onStartup.addListener(refreshFromApp)
 chrome.runtime.onInstalled.addListener(() => {
   refreshFromApp()
-  chrome.contextMenus.create({ id: 'dlm-link', title: t('Baixar com o dlm', 'Download with dlm'), contexts: ['link'] })
+  chrome.contextMenus.create({ id: 'dlm-link', title: 'Download with Acqua Downloader', contexts: ['link'] })
 })
 
 // Hand a download to dlm. Only after the app accepted it is the browser's
@@ -61,18 +57,18 @@ async function capture(item) {
       await chrome.downloads.erase({ id: item.id }).catch(() => {})
     }
     if (r.result?.relinked) {
-      notify(t('O dlm reconheceu o link novo e continuou o download pausado.', 'dlm recognised the new link and resumed the paused download.'))
+      notify('Acqua Downloader recognised the new link and resumed the paused download.')
     }
   } else {
     if (item.id !== undefined) await chrome.downloads.resume(item.id).catch(() => {})
-    notify(t('Não foi possível enviar ao dlm: ', 'Could not send to dlm: ') + (r.error || ''))
+    notify('Could not send to Acqua Downloader: ' + (r.error || ''))
   }
   return r
 }
 
 function notify(message, extra = {}) {
   const id = 'dlm-' + Date.now() + Math.random()
-  chrome.notifications.create(id, { type: 'basic', iconUrl: 'icons/icon128.png', title: 'dlm', message, ...extra })
+  chrome.notifications.create(id, { type: 'basic', iconUrl: 'icons/icon128.png', title: 'Acqua Downloader', message, ...extra })
   return id
 }
 
@@ -87,8 +83,8 @@ chrome.downloads.onCreated.addListener(async (item) => {
   }
   const name = baseName(item.filename) || new URL(item.finalUrl || item.url).pathname.split('/').pop()
   const nid = notify(name, {
-    message: t(`Baixar "${name}" com o dlm?`, `Download "${name}" with dlm?`),
-    buttons: [{ title: t('Baixar com o dlm', 'Download with dlm') }, { title: t('Deixar no navegador', 'Keep in browser') }],
+    message: `Download "${name}" with Acqua Downloader?`,
+    buttons: [{ title: 'Download with Acqua Downloader' }, { title: 'Keep in browser' }],
     requireInteraction: true,
   })
   await chrome.storage.session.set({ [nid]: item })

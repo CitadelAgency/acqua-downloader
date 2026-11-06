@@ -12,7 +12,7 @@ use std::{
 };
 struct Guard(Child);
 fn test_exe() -> String {
-    std::env::var("DLM_TEST_EXE").unwrap_or_else(|_| env!("CARGO_BIN_EXE_dlm").into())
+    std::env::var("DLM_TEST_EXE").unwrap_or_else(|_| env!("CARGO_BIN_EXE_acqua").into())
 }
 impl Drop for Guard {
     fn drop(&mut self) {

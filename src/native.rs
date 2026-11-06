@@ -20,7 +20,7 @@ pub fn register() -> Result<()> {
     std::fs::write(
         &path,
         serde_json::to_vec_pretty(
-            &json!({"name":"com.dlm.host","description":"dlm download manager","path":std::env::current_exe()?,"type":"stdio","allowed_origins":[ORIGIN]}),
+            &json!({"name":"com.dlm.host","description":"Acqua Downloader","path":std::env::current_exe()?,"type":"stdio","allowed_origins":[ORIGIN]}),
         )?,
     )?;
     #[cfg(windows)]
@@ -71,7 +71,7 @@ pub fn ensure_daemon() -> Result<()> {
     }
     Err(Error::new(
         "not_running",
-        "o processo de fundo não respondeu",
+        "the background process did not respond",
     ))
 }
 pub fn run(origin: &str) -> i32 {
@@ -80,7 +80,7 @@ pub fn run(origin: &str) -> i32 {
     if origin != ORIGIN {
         let _ = ipc::write_msg(
             &mut output,
-            br#"{"ok":false,"error":"extensao nao autorizada"}"#,
+            br#"{"ok":false,"error":"extension not authorized"}"#,
         );
         return 1;
     }
@@ -88,7 +88,7 @@ pub fn run(origin: &str) -> i32 {
         let response = (|| -> Result<Value> {
             let r: Value = serde_json::from_slice(&bytes)?;
             if !matches!(r["type"].as_str(), Some("ping" | "add")) {
-                return Err(Error::new("native", "mensagem não permitida"));
+                return Err(Error::new("native", "message not allowed"));
             }
             ensure_daemon()?;
             ipc::call(&r)

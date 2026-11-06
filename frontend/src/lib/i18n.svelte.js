@@ -184,10 +184,10 @@ const dict = {
   },
 }
 
-let lang = $state({ v: 'pt-BR' })
+let lang = $state({ v: 'en' })
 
 export function setLang(l) {
-  lang.v = dict[l] ? l : 'pt-BR'
+  lang.v = dict[l] ? l : 'en'
 }
 
 export function getLang() {
@@ -195,12 +195,12 @@ export function getLang() {
 }
 
 export function t(key, params) {
-  let s = (dict[lang.v] && dict[lang.v][key]) ?? dict['pt-BR'][key] ?? key
+  let s = (dict[lang.v] && dict[lang.v][key]) ?? dict.en[key] ?? key
   if (params) for (const k in params) s = s.replaceAll('{' + k + '}', params[k])
   return s
 }
 
 export const languages = [
-  { id: 'pt-BR', name: 'Português (Brasil)' },
   { id: 'en', name: 'English' },
+  { id: 'pt-BR', name: 'Português (Brasil)' },
 ]

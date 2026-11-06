@@ -1,100 +1,100 @@
-# dlm
+<p align="center"><img src="docs/logo.png" alt="Acqua Downloader" width="640"></p>
 
-Gerenciador de downloads para Windows em Rust, com janela Tauri/Svelte, bandeja, CLI e extensão Chromium. O motor faz downloads segmentados, retomada com journal e verificação antes de entregar o arquivo.
+Download manager for Windows, written in Rust, with a Tauri/Svelte window, tray, CLI and Chromium extension. The engine downloads in segments, resumes through a journal, and verifies every file before delivering it.
 
-## Instalar
+## Install
 
-1. Baixe `dlm_2.0.0_x64-setup.exe` em [Releases](https://github.com/CitadelAgency/dlm/releases/latest) e execute. Não pede administrador e instala o WebView2 se faltar.
-2. O instalador não tem assinatura digital, então o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** e **Executar assim mesmo**.
-3. Para capturar downloads do navegador, abra `chrome://extensions` (ou `edge://extensions`, `brave://extensions`), ligue o **Modo do desenvolvedor**, clique em **Carregar sem compactação** e escolha a pasta da extensão. O caminho é `%LOCALAPPDATA%\dlm\extension`; o menu Iniciar tem o atalho **dlm - pasta da extensão**.
+1. Download `Acqua-Downloader-setup.exe` from [Releases](https://github.com/CitadelAgency/dlm/releases/latest) and run it. It needs no administrator rights and installs WebView2 if it is missing.
+2. The installer has no digital signature, so Windows may show "Windows protected your PC". Click **More info**, then **Run anyway**.
+3. To capture downloads from your browser, open `chrome://extensions` (or `edge://extensions`, `brave://extensions`), turn on **Developer mode**, click **Load unpacked** and pick the extension folder. It is at `%LOCALAPPDATA%\Acqua Downloader\extension`, and the Start menu has a shortcut named **Acqua Downloader - Browser Extension**.
 
-Windows 10/11, 64 bits.
+Requires 64-bit Windows 10 or 11. The interface is in English, and Portuguese is available in Settings.
 
-## Compilar
+## Build
 
-Requisitos: Rust MSVC 1.85+ (validado com 1.93), Visual Studio Build Tools com C++, Windows SDK, Node 20+ e WebView2.
+Requirements: Rust MSVC 1.85+ (validated with 1.93), Visual Studio Build Tools with C++, Windows SDK, Node 20+ and WebView2.
 
 ```powershell
 .\build.ps1 -Check
-# build\bin\dlm-rust.exe
+# build\bin\acqua.exe
 ```
 
-Compilação manual:
+Manual build:
 
 ```powershell
 npm --prefix frontend ci
 npm --prefix frontend run build
 cargo build --locked --release --features custom-protocol
-# target\release\dlm.exe
+# target\release\acqua.exe
 ```
 
-A feature `custom-protocol` incorpora `frontend/dist`, sem servidor Vite. Refaça o build Rust depois de alterar o frontend. Somente CLI: `cargo build --release --no-default-features --bin dlm`.
+The `custom-protocol` feature embeds `frontend/dist`, so no Vite server is needed. Rebuild the Rust side after changing the frontend. CLI only: `cargo build --release --no-default-features --bin acqua`.
 
-Instalador (gera `target\release\bundle\nsis\dlm_2.0.0_x64-setup.exe`):
+Installer (produces `target\release\bundle\nsis\Acqua Downloader_2.1.0_x64-setup.exe`):
 
 ```powershell
 npm --prefix frontend ci
 npx @tauri-apps/cli@2 build --bundles nsis
 ```
 
-## Executar
+## Run
 
 ```powershell
-.\build\bin\dlm-rust.exe
-.\build\bin\dlm-rust.exe --tray
-.\build\bin\dlm-rust.exe get https://servidor/arquivo.zip -o D:\Downloads -c 16
-.\build\bin\dlm-rust.exe resume D:\Downloads\arquivo.zip.dlm
-.\build\bin\dlm-rust.exe relink D:\Downloads\arquivo.zip.dlm https://servidor/link-novo
-.\build\bin\dlm-rust.exe chrome list
-.\build\bin\dlm-rust.exe help
+acqua
+acqua --tray
+acqua get https://server/file.zip -o D:\Downloads -c 16
+acqua resume D:\Downloads\file.zip.dlm
+acqua relink D:\Downloads\file.zip.dlm https://server/new-link
+acqua chrome list
+acqua help
 ```
 
-`get` aceita `-name`, `-hash sha256:HEX|md5:HEX`, `-mirror URL` repetido, `-limit 5M`, `-H "Nome: valor"`, `-q` e `-v`. Códigos: 0 sucesso, 1 erro/pausa, 2 uso inválido, 3 link expirado, 4 integridade. Ctrl+C conserva o progresso confirmado.
+`get` accepts `-name`, `-hash sha256:HEX|md5:HEX`, repeated `-mirror URL`, `-limit 5M`, `-H "Name: value"`, `-q` and `-v`. Exit codes: 0 success, 1 error or pause, 2 invalid usage, 3 expired link, 4 integrity. Ctrl+C keeps the confirmed progress.
 
-A bandeja guarda a fila em `%LOCALAPPDATA%\dlm\dlm.db`. A janela é outro processo: fechá-la mantém os downloads. Há prioridade, limites de banda, agenda, idiomas, notificações, inicialização com Windows e observação opcional da área de transferência.
+The tray keeps the queue in `%LOCALAPPDATA%\dlm\dlm.db`. The window is a separate process, so closing it keeps downloads running. There are priorities, bandwidth limits, a schedule, languages, notifications, start with Windows, and optional clipboard watching.
 
-A barra de título é integrada ao cabeçalho, com controles próprios de minimizar, maximizar/restaurar e fechar. Arraste a marca ou o espaço livre do cabeçalho para mover a janela; dois cliques nessa área alternam a maximização. Fechar a janela mantém a fila na bandeja.
+The title bar is part of the header, with its own minimize, maximize/restore and close controls. Drag the logo or the empty header space to move the window, and double-click there to toggle maximize. Closing the window keeps the queue in the tray.
 
-## Extensão
+## Extension
 
-Carregue a pasta `extension` sem compactação no Chrome, Edge ou Brave. O ID é fixo: `djlnbnckkmhijbocpoehdlcfnkfnikbi`. A bandeja registra o host automaticamente. Também há `register-host` e `unregister-host`.
+Load the `extension` folder unpacked in Chrome, Edge or Brave. Its ID is fixed: `djlnbnckkmhijbocpoehdlcfnkfnikbi`. The tray registers the host automatically. `register-host` and `unregister-host` are also available.
 
-Native Messaging e named pipe com ACL do usuário fazem a comunicação, sem porta HTTP. A extensão envia URL, cookies, referrer e User-Agent. Somente a origem autorizada pode enviar `ping` e `add`.
+Native Messaging and a named pipe with a per-user ACL handle communication, with no HTTP port. The extension sends the URL, cookies, referrer and User-Agent. Only the authorized origin can send `ping` and `add`.
 
-## Integridade
+## Integrity
 
-- Intervalos exigem 206, Content-Range, tamanho e validador compatíveis. Um 200 em retomada é recusado.
-- O parcial recebe `sync_data` antes de intervalos e hashes serem sincronizados no journal CRC32C.
-- Blocos de 4 MiB usam xxh3. Retomadas verificam blocos, emendas de 64 KiB e amostras antes de gravar.
-- A entrega exige releitura completa e SHA-256; hashes informados, publicados em cabeçalhos ou em `.sha256` precisam conferir.
-- O arquivo recebe Mark-of-the-Web e rename sem substituir um destino existente. O dlm nunca executa arquivos baixados.
+- Ranges require a 206, Content-Range, size and a compatible validator. A 200 on resume is refused.
+- The partial file gets `sync_data` before ranges and hashes are synced to the CRC32C journal.
+- 4 MiB blocks use xxh3. Resuming checks blocks, 64 KiB seams and samples before writing.
+- Delivery requires a full re-read and SHA-256. Hashes that were provided, published in headers or in `.sha256` files must match.
+- The file gets the Mark-of-the-Web and a rename that never replaces an existing destination. Acqua Downloader never runs downloaded files.
 
-## Testes
+## Tests
 
 ```powershell
 cargo fmt --check
-cargo clippy --all-targets --features custom-protocol -- -D warnings
+cargo clippy --all-targets --features custom-protocol,dev-tools -- -D warnings
 cargo test --no-default-features --tests
 node --test extension/rules.test.js
 cargo run --release --no-default-features --features dev-tools --bin dlm-testserver -- 127.0.0.1:18765 67108864
 cargo run --release --no-default-features --features dev-tools --bin dlm-bench -- 268435456
 ```
 
-O servidor fornece bytes determinísticos e rotas de falha (`/slow.bin`, `/bad-range.bin`, `/range-200.bin`, `/drop.bin`, `/expired.bin`, `/unknown.bin`). O benchmark compara 1, 4 e 16 conexões com hash final.
+The server provides deterministic bytes and failure routes (`/slow.bin`, `/bad-range.bin`, `/range-200.bin`, `/drop.bin`, `/expired.bin`, `/unknown.bin`). The benchmark compares 1, 4 and 16 connections with a final hash.
 
-Para testes isolados, defina `DLM_DATA_DIR`, `DLM_PIPE_SUFFIX` e `DLM_PORTABLE=1`. Isso separa banco/pipe e suprime registro automático do host e inicialização. `--daemon` inicia a fila sem bandeja e aceita o RPC `Shutdown`.
+For isolated tests, set `DLM_DATA_DIR`, `DLM_PIPE_SUFFIX` and `DLM_PORTABLE=1`. This separates the database and pipe and skips automatic host registration and startup. `--daemon` starts the queue without a tray and accepts the `Shutdown` RPC.
 
-## Código
+## Code
 
-| Caminho | Responsabilidade |
+| Path | Responsibility |
 |---|---|
-| `src/engine.rs`, `fetch.rs`, `journal.rs`, `ranges.rs` | HTTP, integridade e retomada |
-| `src/manager.rs` | fila, SQLite, limites e agenda |
-| `src/ipc.rs`, `native.rs`, `system.rs`, `chrome.rs` | Windows, extensão e importação |
-| `src/desktop.rs`, `cli.rs`, `main.rs` | janela, bandeja e comandos |
-| `frontend/`, `extension/` | Svelte e extensão MV3 |
-| `tests/`, `src/testserver.rs`, `src/bin/` | testes, servidor e benchmark |
+| `src/engine.rs`, `fetch.rs`, `journal.rs`, `ranges.rs` | HTTP, integrity and resume |
+| `src/manager.rs` | queue, SQLite, limits and schedule |
+| `src/ipc.rs`, `native.rs`, `system.rs`, `chrome.rs` | Windows, extension and import |
+| `src/desktop.rs`, `cli.rs`, `main.rs` | window, tray and commands |
+| `frontend/`, `extension/` | Svelte and MV3 extension |
+| `tests/`, `src/testserver.rs`, `src/bin/` | tests, server and benchmark |
 
-## Licença
+## License
 
 [MIT](LICENSE)

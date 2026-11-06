@@ -1,4 +1,4 @@
-/* dlm — "ateliê": watercolor paper underneath, frosted glass on top.
+/* Acqua Downloader: watercolor paper underneath, frosted glass on top.
    Everything here is lightweight by design: system fonts only, the wash is a
    single static WebP (no animation under backdrop-filter), grain is one tiny
    tile, and blur radii stay small. */
@@ -98,7 +98,9 @@ html, body {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--calm);
+  background: linear-gradient(160deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 0%) 46%), var(--calm);
+  -webkit-backdrop-filter: blur(6px) saturate(1.25);
+  backdrop-filter: blur(6px) saturate(1.25);
 }
 .paper::after {
   content: "";

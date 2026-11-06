@@ -108,7 +108,7 @@ pub fn ensure_space(dir: &Path, needed: u64) -> Result<()> {
         if free < needed.saturating_add(64 << 20) {
             return Err(Error::new(
                 "no_space",
-                "espaço livre insuficiente (margem de 64 MiB)",
+                "not enough free space (64 MiB margin)",
             ));
         }
     }
@@ -165,7 +165,7 @@ pub fn crypt(bytes: &[u8], _: bool) -> Result<Vec<u8>> {
     if bytes.is_empty() {
         Ok(Vec::new())
     } else {
-        Err(Error::new("unsupported", "DPAPI requer Windows"))
+        Err(Error::new("unsupported", "DPAPI requires Windows"))
     }
 }
 pub fn autostart(on: bool) -> Result<()> {

@@ -1,12 +1,12 @@
-﻿; Atalho para a pasta da extensão, que fica oculta em AppData.
+﻿; Shortcut to the extension folder, which is hidden under AppData.
 !macro NSIS_HOOK_POSTINSTALL
-  CreateShortCut "$SMPROGRAMS\${PRODUCTNAME} - pasta da extensão.lnk" "$INSTDIR\extension"
+  CreateShortCut "$SMPROGRAMS\${PRODUCTNAME} - Browser Extension.lnk" "$INSTDIR\extension"
 !macroend
 
-; O app grava estes registros sozinho; o desinstalador padrão não os conhece.
+; The app writes these keys itself, so the default uninstaller misses them.
 !macro NSIS_HOOK_PREUNINSTALL
   nsExec::Exec '"$INSTDIR\${MAINBINARYNAME}.exe" unregister-host'
   Pop $0
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "dlm"
-  Delete "$SMPROGRAMS\${PRODUCTNAME} - pasta da extensão.lnk"
+  Delete "$SMPROGRAMS\${PRODUCTNAME} - Browser Extension.lnk"
 !macroend

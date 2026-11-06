@@ -86,7 +86,7 @@
   <header data-tauri-drag-region>
     <div class="brand" data-tauri-drag-region>
       <img src={mark} alt="" width="34" height="34" draggable="false" data-tauri-drag-region />
-      <h1 data-tauri-drag-region>dlm</h1>
+      <h1 data-tauri-drag-region>Acqua Downloader</h1>
       {#if anyActive}<span class="pill" data-tauri-drag-region>{active}</span>{/if}
     </div>
     <div class="tools">
@@ -177,7 +177,8 @@
 <style>
   main { height: 100%; display: flex; flex-direction: column; padding: 0 clamp(14px, 4vw, 40px); }
 
-  header { display: flex; align-items: center; gap: 12px; padding: 18px 2px 12px; }
+  /* Right padding keeps the tools clear of the window controls in the corner. */
+  header { display: flex; align-items: center; gap: 12px; padding: 18px calc(150px - clamp(14px, 4vw, 40px)) 12px 2px; }
   .brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
   .brand img { filter: drop-shadow(0 2px 4px rgb(28 34 51 / 15%)); }
   .brand h1 { margin: 0; font-size: 26px; line-height: 1; letter-spacing: -0.02em; }

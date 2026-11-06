@@ -22,8 +22,8 @@ try {
     cargo @cargoArgs
     if ($LASTEXITCODE -ne 0) { throw 'Rust build failed' }
     New-Item -ItemType Directory -Force -Path build/bin | Out-Null
-    Copy-Item -LiteralPath "target/$profile/dlm.exe" -Destination build/bin/dlm-rust.exe -Force
+    Copy-Item -LiteralPath "target/$profile/acqua.exe" -Destination build/bin/acqua.exe -Force
     Copy-Item -LiteralPath "target/$profile/dlm-testserver.exe" -Destination build/bin/dlm-testserver.exe -Force
     Copy-Item -LiteralPath "target/$profile/dlm-bench.exe" -Destination build/bin/dlm-bench.exe -Force
-    Write-Host 'Ready: build/bin/dlm-rust.exe'
+    Write-Host 'Ready: build/bin/acqua.exe'
 } finally { Pop-Location }

@@ -23,10 +23,7 @@ async fn rpc(method: String, args: Vec<Value>) -> std::result::Result<Value, Str
         if response["ok"] == true {
             Ok(response["result"].clone())
         } else {
-            Err(response["error"]
-                .as_str()
-                .unwrap_or("erro desconhecido")
-                .into())
+            Err(response["error"].as_str().unwrap_or("unknown error").into())
         }
     })
     .await
@@ -46,7 +43,7 @@ pub fn window() -> Result<()> {
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
             )
-            .title("dlm")
+            .title("Acqua Downloader")
             .decorations(false)
             .shadow(true)
             .inner_size(980., 640.)
@@ -88,17 +85,17 @@ pub fn tray(m: Arc<DownloadManager>) -> Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .setup(move |app| {
-            let open = MenuItem::with_id(app, "open", "Abrir o dlm", true, None::<&str>)?;
-            let pause = MenuItem::with_id(app, "pause", "Pausar tudo", true, None::<&str>)?;
-            let resume = MenuItem::with_id(app, "resume", "Retomar tudo", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
+            let open = MenuItem::with_id(app, "open", "Open Acqua Downloader", true, None::<&str>)?;
+            let pause = MenuItem::with_id(app, "pause", "Pause all", true, None::<&str>)?;
+            let resume = MenuItem::with_id(app, "resume", "Resume all", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &pause, &resume, &quit])?;
             let manager = background.clone();
             TrayIconBuilder::new()
                 .icon(tauri::image::Image::from_bytes(include_bytes!(
                     "../extension/icons/icon32.png"
                 ))?)
-                .tooltip("dlm")
+                .tooltip("Acqua Downloader")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_tray_icon_event(|_, event| {
@@ -190,7 +187,8 @@ impl WindowLock {
             if unsafe { GetLastError() } == ERROR_ALREADY_EXISTS {
                 unsafe {
                     CloseHandle(handle);
-                    let window = FindWindowW(std::ptr::null(), system::wide("dlm").as_ptr());
+                    let window =
+                        FindWindowW(std::ptr::null(), system::wide("Acqua Downloader").as_ptr());
                     if !window.is_null() {
                         ShowWindow(window, SW_RESTORE);
                         SetForegroundWindow(window);

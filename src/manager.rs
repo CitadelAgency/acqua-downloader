@@ -79,7 +79,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            lang: "pt-BR".into(),
+            lang: "en".into(),
             dir: PathBuf::from(std::env::var_os("USERPROFILE").unwrap_or_else(|| ".".into()))
                 .join("Downloads")
                 .display()
@@ -230,7 +230,7 @@ impl Manager {
                 task.id = id;
                 if let Some(bytes) = cookies {
                     task.cookies = String::from_utf8(system::crypt(&bytes, true)?)
-                        .map_err(|_| Error::new("database", "cookies criptografados inválidos"))?;
+                        .map_err(|_| Error::new("database", "invalid encrypted cookies"))?;
                 }
                 if matches!(task.state.as_str(), "downloading" | "waiting_network") {
                     task.state = "queued".into();
@@ -457,7 +457,7 @@ impl Manager {
                 e.task.sha256 = res.sha256;
                 e.task.check = res.check;
                 e.task.finished = now();
-                notification = Some(("Download concluído".into(), e.task.name.clone()));
+                notification = Some(("Download complete".into(), e.task.name.clone()));
             }
             Err(err) => {
                 if err.code == "paused" {
@@ -477,7 +477,7 @@ impl Manager {
                         }
                         "needs_link" => {
                             notification =
-                                Some(("Precisa de um link novo".into(), e.task.name.clone()));
+                                Some(("A new link is needed".into(), e.task.name.clone()));
                             "needs_link"
                         }
                         _ => "error",
@@ -630,7 +630,7 @@ impl Manager {
             let e = inner
                 .tasks
                 .get_mut(&id)
-                .ok_or_else(|| Error::new("task", "download não encontrado"))?;
+                .ok_or_else(|| Error::new("task", "download not found"))?;
             if let Some(r) = &mut e.running {
                 r.reason = reason.into();
                 r.cancel.store(true, Ordering::Relaxed);
@@ -661,7 +661,7 @@ impl Manager {
         let e = inner
             .tasks
             .get_mut(&id)
-            .ok_or_else(|| Error::new("task", "download não encontrado"))?;
+            .ok_or_else(|| Error::new("task", "download not found"))?;
         change(&mut e.task)?;
         e.limiter.set(e.task.limit_bps);
         let task = e.task.clone();
@@ -686,7 +686,7 @@ impl Manager {
             {
                 return Err(Error::new(
                     "integrity",
-                    "reinicie ou forneça um link comprovadamente do mesmo arquivo",
+                    "start over or provide a link proven to be the same file",
                 ));
             }
             if t.state != "downloading" {
@@ -715,7 +715,7 @@ impl Manager {
             .tasks
             .get(&id)
             .map(|e| e.task.clone())
-            .ok_or_else(|| Error::new("task", "download não encontrado"))
+            .ok_or_else(|| Error::new("task", "download not found"))
     }
     fn relink_with(
         &self,
@@ -782,7 +782,7 @@ impl Manager {
                     })
                     .map(|e| e.task.id);
                 if existing.is_some_and(|id| inner.tasks[&id].running.is_some()) {
-                    return Err(Error::new("chrome", "importação já em andamento"));
+                    return Err(Error::new("chrome", "import already in progress"));
                 }
                 let mut task = existing
                     .and_then(|id| inner.tasks.get(&id).map(|e| e.task.clone()))
@@ -838,13 +838,13 @@ impl Manager {
         let arg = |i: usize| {
             args.get(i)
                 .cloned()
-                .ok_or_else(|| Error::new("rpc", format!("argumento {i} ausente")))
+                .ok_or_else(|| Error::new("rpc", format!("missing argument {i}")))
         };
         let text = |i: usize| -> Result<String> {
             arg(i)?
                 .as_str()
                 .map(str::to_string)
-                .ok_or_else(|| Error::new("rpc", "texto esperado"))
+                .ok_or_else(|| Error::new("rpc", "text expected"))
         };
         match method {
             "List" => return Ok(self.list()),
@@ -862,13 +862,13 @@ impl Manager {
                 {
                     return Err(Error::new(
                         "settings",
-                        "pasta, tarefas ou conexões inválidas",
+                        "invalid folder, tasks or connections",
                     ));
                 }
                 if s.schedule.enabled {
                     for t in [&s.schedule.start, &s.schedule.end] {
                         chrono::NaiveTime::parse_from_str(t, "%H:%M")
-                            .map_err(|_| Error::new("settings", "horário inválido"))?;
+                            .map_err(|_| Error::new("settings", "invalid time"))?;
                     }
                 }
                 system::autostart(s.autostart)?;
@@ -888,7 +888,7 @@ impl Manager {
             "SetPriority" => {
                 let p = arg(1)?
                     .as_i64()
-                    .ok_or_else(|| Error::new("rpc", "prioridade inválida"))?;
+                    .ok_or_else(|| Error::new("rpc", "invalid priority"))?;
                 self.update(id, |t| {
                     t.priority = p;
                     Ok(())
@@ -897,7 +897,7 @@ impl Manager {
             "SetLimit" => {
                 let bps = arg(1)?
                     .as_u64()
-                    .ok_or_else(|| Error::new("rpc", "limite inválido"))?;
+                    .ok_or_else(|| Error::new("rpc", "invalid limit"))?;
                 self.update(id, |t| {
                     t.limit_bps = bps;
                     Ok(())
@@ -934,7 +934,7 @@ impl Manager {
                 {
                     return Err(Error::new(
                         "not_same_file",
-                        "espelho precisa ter mesmo ETag forte e tamanho",
+                        "mirror must have the same strong ETag and size",
                     ));
                 }
                 drop(j);
@@ -964,7 +964,7 @@ impl Manager {
                 } else {
                     self.update(id, |t| {
                         if t.state == "done" {
-                            return Err(Error::new("task", "download já concluído"));
+                            return Err(Error::new("task", "download already finished"));
                         }
                         t.state = "queued".into();
                         t.err_code.clear();
@@ -994,7 +994,7 @@ impl Manager {
                 let t = self.task(id)?;
                 let item = t
                     .chrome
-                    .ok_or_else(|| Error::new("chrome", "tarefa sem importação"))?;
+                    .ok_or_else(|| Error::new("chrome", "task has no import"))?;
                 return self.import(vec![item]);
             }
             "GetInfo" => {
@@ -1003,7 +1003,7 @@ impl Manager {
                 );
             }
             "Shutdown" => self.stop.store(true, Ordering::Relaxed),
-            _ => return Err(Error::new("rpc", format!("método desconhecido: {method}"))),
+            _ => return Err(Error::new("rpc", format!("unknown method: {method}"))),
         }
         Ok(Value::Null)
     }
@@ -1037,7 +1037,7 @@ impl Manager {
                 request["method"].as_str().unwrap_or(""),
                 request["args"].as_array().map(Vec::as_slice).unwrap_or(&[]),
             ),
-            _ => Err(Error::new("rpc", "mensagem inválida")),
+            _ => Err(Error::new("rpc", "invalid message")),
         };
         match result {
             Ok(v) => json!({"ok":true,"result":v}),

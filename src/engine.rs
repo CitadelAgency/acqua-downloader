@@ -175,7 +175,7 @@ pub struct Download {
 }
 pub fn check(cancel: &AtomicBool) -> Result<()> {
     if cancel.load(Ordering::Relaxed) {
-        Err(Error::new("paused", "download pausado"))
+        Err(Error::new("paused", "download paused"))
     } else {
         Ok(())
     }
@@ -194,7 +194,7 @@ pub fn read_at(file: &File, buf: &mut [u8], mut at: u64) -> Result<()> {
             file.read_at(&mut buf[done..], at)?
         };
         if n == 0 {
-            return Err(Error::new("other", "arquivo parcial truncado"));
+            return Err(Error::new("other", "partial file truncated"));
         }
         done += n;
         at += n as u64;
@@ -215,7 +215,7 @@ fn write_at(file: &File, buf: &[u8], mut at: u64) -> Result<()> {
             file.write_at(&buf[done..], at)?
         };
         if n == 0 {
-            return Err(Error::new("no_space", "falha ao gravar arquivo parcial"));
+            return Err(Error::new("no_space", "failed to write partial file"));
         }
         done += n;
         at += n as u64;
@@ -261,7 +261,7 @@ impl Download {
             .cfg
             .sources
             .first()
-            .ok_or_else(|| Error::new("usage", "nenhuma URL"))?;
+            .ok_or_else(|| Error::new("usage", "no URL"))?;
         fetch::validate_url(&src.url)?;
         if !self.cfg.expected_hash.is_empty() {
             fetch::user_hash(&self.cfg.expected_hash)?;
@@ -311,7 +311,7 @@ impl Download {
                 if j.meta.total != p.total || validator(&j.meta).conflicts(&p.validator) {
                     return Err(Error::new(
                         "remote_changed",
-                        "já existe um parcial deste nome de outra versão",
+                        "a partial file with this name from another version already exists",
                     ));
                 }
                 journal = Some(j);
@@ -344,7 +344,7 @@ impl Download {
         let final_path = PathBuf::from(
             jp.to_string_lossy()
                 .strip_suffix(".dlm")
-                .ok_or_else(|| Error::new("usage", "journal deve terminar em .dlm"))?,
+                .ok_or_else(|| Error::new("usage", "journal must end in .dlm"))?,
         );
         let part = if self.cfg.part_path.as_os_str().is_empty() {
             PathBuf::from(format!("{}.dlmpart", final_path.display()))
@@ -372,7 +372,7 @@ impl Download {
             }
             return Err(Error::new(
                 "hash_mismatch",
-                "arquivo final após crash não confere",
+                "final file does not match after a crash",
             ));
         }
         if !j.meta.ranges && probe.is_none() {
@@ -403,7 +403,7 @@ impl Download {
         if j.done.covered() > 0 && !part.exists() {
             return Err(Error::new(
                 "other",
-                "arquivo parcial ausente; o journal não pode ser retomado",
+                "partial file is missing; the journal cannot be resumed",
             ));
         }
         if j.meta.total >= 0 {
@@ -425,7 +425,7 @@ impl Download {
             if f.metadata()?.len() > j.meta.total as u64 {
                 return Err(Error::new(
                     "part_too_large",
-                    "arquivo parcial maior que o total",
+                    "partial file is larger than the total",
                 ));
             }
             system::sparse(&f);
@@ -486,7 +486,7 @@ impl Download {
                 {
                     return Err(Error::new(
                         "not_same_file",
-                        "espelho precisa ter mesmo tamanho e ETag forte",
+                        "mirror must have the same size and strong ETag",
                     ));
                 }
                 sources.push(mirror.clone());
@@ -499,10 +499,7 @@ impl Download {
                     break;
                 }
                 if round == 2 {
-                    return Err(Error::new(
-                        "hash_mismatch",
-                        "blocos locais continuam divergentes",
-                    ));
+                    return Err(Error::new("hash_mismatch", "local blocks still differ"));
                 }
                 for i in bad {
                     j.retract(Range::new(i * BLOCK, ((i + 1) * BLOCK).min(total)))?;
@@ -511,7 +508,7 @@ impl Download {
         } else {
             let p = probe
                 .take()
-                .ok_or_else(|| Error::new("other", "resposta inicial ausente"))?;
+                .ok_or_else(|| Error::new("other", "initial response missing"))?;
             self.stream(&f, &mut j, p.response)?;
         }
         check(&self.cancel)?;
@@ -692,7 +689,7 @@ impl Download {
                                                 if size == 0 {
                                                     return Err(Error::new(
                                                         "network",
-                                                        "resposta interrompida",
+                                                        "response interrupted",
                                                     ));
                                                 }
                                                 for limiter in &self.cfg.limiters {
@@ -858,7 +855,7 @@ impl Download {
             s.done_ranges = j.done.0.clone();
         }
         if j.meta.total >= 0 && pos != j.meta.total as u64 {
-            return Err(Error::new("network", "tamanho da resposta incompleto"));
+            return Err(Error::new("network", "incomplete response size"));
         }
         let mut meta = j.meta.clone();
         meta.total = pos as i64;
@@ -908,7 +905,7 @@ fn compare(
     let mut local = vec![0; remote.len()];
     read_at(f, &mut local, r.start)?;
     if local != remote {
-        return Err(Error::new(code, format!("bytes diferentes em {}", r.start)));
+        return Err(Error::new(code, format!("bytes differ at {}", r.start)));
     }
     Ok(())
 }
@@ -922,7 +919,7 @@ pub fn prove_identity(
 ) -> Result<Validator> {
     let p = fetch::probe(c, src)?;
     if p.total != total as i64 || !p.ranges || v.conflicts(&p.validator) {
-        return Err(Error::new("not_same_file", "tamanho ou validador difere"));
+        return Err(Error::new("not_same_file", "size or validator differs"));
     }
     let found = p.validator.clone();
     drop(p);

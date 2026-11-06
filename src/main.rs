@@ -71,7 +71,7 @@ fn main() {
         eprintln!("{e}");
         #[cfg(feature = "desktop")]
         rfd::MessageDialog::new()
-            .set_title("dlm")
+            .set_title("Acqua Downloader")
             .set_description(e.to_string())
             .show();
         std::process::exit(1);

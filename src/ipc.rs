@@ -9,7 +9,7 @@ pub fn read_msg(r: &mut impl Read) -> Result<Vec<u8>> {
     r.read_exact(&mut len)?;
     let n = u32::from_le_bytes(len) as usize;
     if n > MAX_MESSAGE {
-        return Err(Error::new("ipc", "mensagem grande demais"));
+        return Err(Error::new("ipc", "message too large"));
     }
     let mut bytes = vec![0; n];
     r.read_exact(&mut bytes)?;
@@ -17,7 +17,7 @@ pub fn read_msg(r: &mut impl Read) -> Result<Vec<u8>> {
 }
 pub fn write_msg(w: &mut impl Write, bytes: &[u8]) -> Result<()> {
     if bytes.len() > MAX_MESSAGE {
-        return Err(Error::new("ipc", "mensagem grande demais"));
+        return Err(Error::new("ipc", "message too large"));
     }
     w.write_all(&(bytes.len() as u32).to_le_bytes())?;
     w.write_all(bytes)?;
@@ -77,7 +77,7 @@ impl Read for TimedPipe {
             if std::time::Instant::now() >= self.deadline {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
-                    "named pipe sem resposta",
+                    "named pipe did not respond",
                 ));
             }
             std::thread::sleep(std::time::Duration::from_millis(5));
@@ -249,9 +249,9 @@ pub fn serve(
 }
 #[cfg(not(windows))]
 pub fn call(_: &serde_json::Value) -> Result<serde_json::Value> {
-    Err(Error::new("unsupported", "named pipes requerem Windows"))
+    Err(Error::new("unsupported", "named pipes require Windows"))
 }
 #[cfg(not(windows))]
 pub fn serve(_: Arc<dyn Fn(serde_json::Value) -> serde_json::Value + Send + Sync>) -> Result<()> {
-    Err(Error::new("unsupported", "named pipes requerem Windows"))
+    Err(Error::new("unsupported", "named pipes require Windows"))
 }

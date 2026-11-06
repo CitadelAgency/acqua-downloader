@@ -55,18 +55,11 @@
 
 <style>
   .window-controls {
-    position: relative;
+    position: fixed;
+    top: 0;
+    right: 0;
     z-index: 70;
     display: flex;
-    flex: none;
-    align-items: center;
-    gap: 3px;
-    padding: 3px;
-    margin-left: 9px;
-    border: 1px solid var(--glass-line);
-    border-radius: 13px;
-    background: color-mix(in oklab, var(--paper) 45%, transparent);
-    box-shadow: 0 1px 0 var(--glass-edge) inset;
     transition: opacity 150ms ease;
   }
   .window-controls.unfocused { opacity: .6; }
@@ -74,11 +67,11 @@
   .window-button {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 30px;
+    width: 46px;
+    height: 32px;
     padding: 0;
     border: 0;
-    border-radius: 9px;
+    border-radius: 0;
     background: transparent;
     color: var(--muted);
     box-shadow: none;

@@ -104,11 +104,11 @@ impl Journal {
         if !header || j.meta.v != 1 || j.meta.bs != 4 << 20 {
             return Err(Error::new(
                 "journal",
-                "cabeçalho inválido ou versão incompatível",
+                "invalid header or incompatible version",
             ));
         }
         if j.meta.total >= 0 && j.done.0.iter().any(|r| r.end > j.meta.total as u64) {
-            return Err(Error::new("journal", "intervalo fora do arquivo"));
+            return Err(Error::new("journal", "range outside the file"));
         }
         j.file.set_len(valid)?;
         j.file.seek(SeekFrom::Start(valid))?;
@@ -117,16 +117,16 @@ impl Journal {
     fn replay(&mut self, s: &str) -> Result<()> {
         let (kind, rest) = s
             .split_once(' ')
-            .ok_or_else(|| Error::new("journal", "registro inválido"))?;
+            .ok_or_else(|| Error::new("journal", "invalid record"))?;
         let nums = || -> Result<(u64, u64)> {
             let (a, b) = rest
                 .split_once(' ')
-                .ok_or_else(|| Error::new("journal", "intervalo inválido"))?;
+                .ok_or_else(|| Error::new("journal", "invalid range"))?;
             Ok((
                 a.parse()
-                    .map_err(|_| Error::new("journal", "offset inválido"))?,
+                    .map_err(|_| Error::new("journal", "invalid offset"))?,
                 b.parse()
-                    .map_err(|_| Error::new("journal", "offset inválido"))?,
+                    .map_err(|_| Error::new("journal", "invalid offset"))?,
             ))
         };
         match kind {
@@ -134,7 +134,7 @@ impl Journal {
             "R" => {
                 let (a, b) = nums()?;
                 if b < a {
-                    return Err(Error::new("journal", "intervalo invertido"));
+                    return Err(Error::new("journal", "inverted range"));
                 }
                 self.done.add(Range::new(a, b));
             }
@@ -145,16 +145,16 @@ impl Journal {
             "B" => {
                 let (a, b) = rest
                     .split_once(' ')
-                    .ok_or_else(|| Error::new("journal", "bloco inválido"))?;
+                    .ok_or_else(|| Error::new("journal", "invalid block"))?;
                 self.blocks.insert(
                     a.parse()
-                        .map_err(|_| Error::new("journal", "bloco inválido"))?,
+                        .map_err(|_| Error::new("journal", "invalid block"))?,
                     u64::from_str_radix(b, 16)
-                        .map_err(|_| Error::new("journal", "hash inválido"))?,
+                        .map_err(|_| Error::new("journal", "invalid hash"))?,
                 );
             }
             "F" => self.final_record = rest.into(),
-            _ => return Err(Error::new("journal", "registro desconhecido")),
+            _ => return Err(Error::new("journal", "unknown record")),
         }
         Ok(())
     }

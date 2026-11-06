@@ -62,17 +62,17 @@ pub fn user_hash(text: &str) -> Result<Digest> {
         .split_once(':')
         .unwrap_or((if text.len() == 64 { "sha256" } else { "md5" }, &text));
     let algo = algo.replace('-', "");
-    let bytes = hex::decode(sum).map_err(|_| Error::new("usage", "hash hexadecimal inválido"))?;
+    let bytes = hex::decode(sum).map_err(|_| Error::new("usage", "invalid hexadecimal hash"))?;
     if !matches!((algo.as_str(), bytes.len()), ("sha256", 32) | ("md5", 16)) {
         return Err(Error::new(
             "usage",
-            "informe SHA-256 (64 caracteres) ou MD5 (32)",
+            "provide SHA-256 (64 characters) or MD5 (32)",
         ));
     }
     Ok(Digest {
         algo,
         sum: sum.into(),
-        source: "informado pelo usuário".into(),
+        source: "provided by the user".into(),
     })
 }
 pub fn header<'a>(h: &'a HeaderMap, key: &str) -> &'a str {
@@ -84,13 +84,13 @@ pub fn client() -> Result<Client> {
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(30))
         .pool_idle_timeout(Duration::from_secs(60))
-        .user_agent("dlm/2.0")
+        .user_agent(concat!("AcquaDownloader/", env!("CARGO_PKG_VERSION")))
         .build()?)
 }
 pub fn validate_url(raw: &str) -> Result<url::Url> {
-    let u = url::Url::parse(raw).map_err(|_| Error::new("usage", "URL inválida"))?;
+    let u = url::Url::parse(raw).map_err(|_| Error::new("usage", "invalid URL"))?;
     if !matches!(u.scheme(), "http" | "https") || u.host_str().is_none() {
-        return Err(Error::new("usage", "somente URLs HTTP(S) são aceitas"));
+        return Err(Error::new("usage", "only HTTP(S) URLs are accepted"));
     }
     Ok(u)
 }
@@ -107,12 +107,9 @@ pub fn content_range(raw: &str) -> Result<(u64, u64, u64)> {
         let (a, b) = r.split_once('-')?;
         Some((a.parse().ok()?, b.parse().ok()?, t.parse().ok()?))
     };
-    let (a, b, t) = parse().filter(|(a, b, t)| a <= b && b < t).ok_or_else(|| {
-        Error::new(
-            "bad_content_range",
-            format!("Content-Range inválido: {raw}"),
-        )
-    })?;
+    let (a, b, t) = parse()
+        .filter(|(a, b, t)| a <= b && b < t)
+        .ok_or_else(|| Error::new("bad_content_range", format!("invalid Content-Range: {raw}")))?;
     Ok((a, b, t))
 }
 pub fn status(r: &Response) -> Error {
@@ -149,7 +146,7 @@ pub fn identity(r: &Response) -> Result<()> {
     if !enc.is_empty() && !enc.eq_ignore_ascii_case("identity") {
         return Err(Error::new(
             "bad_content_range",
-            "resposta comprimida em transferência de bytes",
+            "compressed response on a byte transfer",
         ));
     }
     Ok(())
@@ -180,7 +177,7 @@ pub fn probe(c: &Client, src: &Source) -> Result<Probe> {
     {
         return Err(Error::new(
             "needs_link",
-            "página HTML recebida no lugar do arquivo",
+            "received an HTML page instead of the file",
         ));
     }
     identity(&r)?;
@@ -223,7 +220,7 @@ pub fn get_range(
     v: &Validator,
 ) -> Result<Response> {
     if a >= b || b > total {
-        return Err(Error::new("bad_content_range", "intervalo inválido"));
+        return Err(Error::new("bad_content_range", "invalid range"));
     }
     let mut req = request(c, src)?.header("Range", format!("bytes={a}-{}", b - 1));
     if !v.if_range().is_empty() {
@@ -233,7 +230,7 @@ pub fn get_range(
     if matches!(r.status().as_u16(), 200 | 412 | 416) {
         return Err(Error::new(
             "remote_changed",
-            "servidor não confirmou a versão e o intervalo solicitados",
+            "server did not confirm the requested version and range",
         ));
     }
     if r.status().as_u16() != 206 {
@@ -245,11 +242,14 @@ pub fn get_range(
     {
         return Err(Error::new(
             "bad_content_range",
-            "intervalo ou tamanho da resposta difere do pedido",
+            "response range or size differs from the request",
         ));
     }
     if v.conflicts(&Validator::from_headers(r.headers())) {
-        return Err(Error::new("remote_changed", "ETag ou Last-Modified mudou"));
+        return Err(Error::new(
+            "remote_changed",
+            "ETag or Last-Modified changed",
+        ));
     }
     Ok(r)
 }

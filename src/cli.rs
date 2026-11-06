@@ -10,7 +10,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, atomic::Ordering},
 };
-const HELP: &str = "dlm 2 — Rust\n\ndlm get <url> [-o pasta] [-name arquivo] [-c 16] [-hash sha256:...|md5:...]\n              [-mirror url]... [-limit 5M] [-H \"Nome: valor\"]... [-q] [-v]\ndlm resume <arquivo.dlm>\ndlm relink <arquivo.dlm> <url-nova>\ndlm chrome [list] | chrome import <n>\ndlm register-host | unregister-host\n\nSem argumentos: janela; --tray: bandeja.\nCódigos: 0 sucesso, 1 erro/pausa, 2 uso, 3 link expirado, 4 integridade.\n";
+const HELP: &str = "Acqua Downloader 2\n\nacqua get <url> [-o folder] [-name file] [-c 16] [-hash sha256:...|md5:...]\n              [-mirror url]... [-limit 5M] [-H \"Name: value\"]... [-q] [-v]\nacqua resume <file.dlm>\nacqua relink <file.dlm> <new-url>\nacqua chrome [list] | chrome import <n>\nacqua register-host | unregister-host\n\nNo arguments: window; --tray: tray.\nExit codes: 0 success, 1 error/pause, 2 usage, 3 expired link, 4 integrity.\n";
 pub fn run(args: &[String]) -> i32 {
     match command(args) {
         Ok(()) => 0,
@@ -31,7 +31,7 @@ pub fn run(args: &[String]) -> i32 {
 fn command(args: &[String]) -> Result<()> {
     match args.first().map(String::as_str).unwrap_or("help") {
         "help" | "--help" | "-h" => print!("{HELP}"),
-        "version" | "--version" => println!("dlm {} (Rust)", env!("CARGO_PKG_VERSION")),
+        "version" | "--version" => println!("Acqua Downloader {}", env!("CARGO_PKG_VERSION")),
         "get" => {
             let mut cfg = Config::default();
             let mut urls = Vec::new();
@@ -42,7 +42,7 @@ fn command(args: &[String]) -> Result<()> {
                 let a = &args[i];
                 if !a.starts_with('-') {
                     if !urls.is_empty() {
-                        return Err(Error::new("usage", "URL adicional inesperada; use -mirror"));
+                        return Err(Error::new("usage", "unexpected extra URL; use -mirror"));
                     }
                     urls.push(a.clone());
                     i += 1;
@@ -59,16 +59,16 @@ fn command(args: &[String]) -> Result<()> {
                 }
                 let v = args
                     .get(i + 1)
-                    .ok_or_else(|| Error::new("usage", format!("valor ausente para {a}")))?;
+                    .ok_or_else(|| Error::new("usage", format!("missing value for {a}")))?;
                 match a.as_str() {
                     "-o" | "--output" => cfg.dir = PathBuf::from(v),
                     "-name" | "--name" => cfg.name = v.clone(),
                     "-c" | "--connections" => {
                         cfg.max_conns = v
                             .parse()
-                            .map_err(|_| Error::new("usage", "conexões inválidas"))?;
+                            .map_err(|_| Error::new("usage", "invalid connections"))?;
                         if !(1..=32).contains(&cfg.max_conns) {
-                            return Err(Error::new("usage", "use de 1 a 32 conexões"));
+                            return Err(Error::new("usage", "use 1 to 32 connections"));
                         }
                     }
                     "-hash" | "--hash" => cfg.expected_hash = v.clone(),
@@ -79,17 +79,17 @@ fn command(args: &[String]) -> Result<()> {
                     "-H" | "--header" => {
                         let (k, v) = v
                             .split_once(':')
-                            .ok_or_else(|| Error::new("usage", "cabeçalho deve ser Nome: valor"))?;
+                            .ok_or_else(|| Error::new("usage", "header must be Name: value"))?;
                         let k = reqwest::header::HeaderName::from_bytes(k.trim().as_bytes())
-                            .map_err(|_| Error::new("usage", "nome de cabeçalho inválido"))?;
+                            .map_err(|_| Error::new("usage", "invalid header name"))?;
                         headers.insert(
                             k,
                             v.trim()
                                 .parse()
-                                .map_err(|_| Error::new("usage", "valor de cabeçalho inválido"))?,
+                                .map_err(|_| Error::new("usage", "invalid header value"))?,
                         );
                     }
-                    _ => return Err(Error::new("usage", format!("opção desconhecida: {a}"))),
+                    _ => return Err(Error::new("usage", format!("unknown option: {a}"))),
                 }
                 i += 2;
             }
@@ -132,15 +132,15 @@ fn command(args: &[String]) -> Result<()> {
                 path.to_string_lossy().trim_end_matches(".dlm")
             ));
             engine::relink(&path, &part, &Source::new(&args[2]))?;
-            println!("link aceito; execute: dlm resume {}", args[1]);
+            println!("link accepted; run: acqua resume {}", args[1]);
         }
         "register-host" => {
             native::register()?;
-            println!("host registrado: {}", native::manifest_path().display());
+            println!("host registered: {}", native::manifest_path().display());
         }
         "unregister-host" => {
             native::unregister()?;
-            println!("host removido");
+            println!("host removed");
         }
         "chrome" => {
             let items = chrome::all()?;
@@ -152,15 +152,15 @@ fn command(args: &[String]) -> Result<()> {
                     );
                 }
                 if items.is_empty() {
-                    println!("Nenhum download interrompido encontrado.");
+                    println!("No interrupted downloads found.");
                 }
             } else if args.len() == 3 && args[1] == "import" {
                 let n = args[2]
                     .parse::<usize>()
-                    .map_err(|_| Error::new("usage", "índice inválido"))?;
+                    .map_err(|_| Error::new("usage", "invalid index"))?;
                 let it = items
                     .get(n)
-                    .ok_or_else(|| Error::new("usage", "índice inválido"))?;
+                    .ok_or_else(|| Error::new("usage", "invalid index"))?;
                 download(chrome::prepare(it)?, false)?;
             } else {
                 return Err(Error::new("usage", HELP));
@@ -185,7 +185,7 @@ fn download(cfg: Config, quiet: bool) -> Result<()> {
                 std::thread::sleep(std::time::Duration::from_millis(400));
                 let s = live.lock().unwrap();
                 eprint!(
-                    "\r{} {}/{} · {:.1} MiB/s · {} conexões       ",
+                    "\r{} {}/{} · {:.1} MiB/s · {} connections       ",
                     s.state,
                     s.done,
                     s.total,
@@ -204,7 +204,7 @@ fn download(cfg: Config, quiet: bool) -> Result<()> {
     let result = result?;
     if result.check.checked {
         println!(
-            "Hash {} conferido ({})",
+            "Hash {} verified ({})",
             result.check.algo, result.check.source
         );
     }
@@ -229,9 +229,9 @@ pub fn parse_rate(text: &str) -> Result<u64> {
     };
     let n = text
         .parse::<f64>()
-        .map_err(|_| Error::new("usage", "limite inválido"))?;
+        .map_err(|_| Error::new("usage", "invalid limit"))?;
     if !n.is_finite() || n < 0. || n * mul > u64::MAX as f64 {
-        return Err(Error::new("usage", "limite inválido"));
+        return Err(Error::new("usage", "invalid limit"));
     }
     Ok((n * mul) as u64)
 }

@@ -25,7 +25,7 @@ fn main() {
         let result = dl.run().unwrap();
         assert_eq!(result.sha256, expected);
         println!(
-            "{connections:2} conexões: {:7.1} MiB/s · SHA-256 ok",
+            "{connections:2} connections: {:7.1} MiB/s · SHA-256 ok",
             size as f64 / 1048576. / begin.elapsed().as_secs_f64()
         );
         std::fs::remove_file(result.path).unwrap();
