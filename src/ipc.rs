@@ -285,8 +285,9 @@ pub fn serve(
     fs::set_permissions(&dir, Permissions::from_mode(0o700))?;
     // Held until the process exits, so one daemon runs and a crash leaves no lock.
     let lock = fs::File::create(path.with_extension("lock"))?;
-    lock.try_lock()
-        .map_err(|_| Error::new("already_running", "another instance is running"))?;
+    if !crate::system::try_lock(&lock) {
+        return Err(Error::new("already_running", "another instance is running"));
+    }
     std::mem::forget(lock);
     match fs::remove_file(&path) {
         Ok(()) => {}

@@ -51,6 +51,7 @@ pub fn misplaced() -> bool {
     false
 }
 pub fn hidden_command(exe: impl AsRef<std::ffi::OsStr>) -> Command {
+    #[cfg_attr(not(windows), allow(unused_mut))]
     let mut c = Command::new(exe);
     #[cfg(windows)]
     {
@@ -78,6 +79,11 @@ pub fn spawn_self(arg: &str) -> Result<()> {
         std::thread::spawn(move || child.wait());
     }
     Ok(())
+}
+#[cfg(not(windows))]
+pub fn try_lock(file: &File) -> bool {
+    use std::os::fd::AsRawFd;
+    unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) == 0 }
 }
 #[cfg(not(windows))]
 fn c_path(path: &Path) -> std::io::Result<std::ffi::CString> {
@@ -164,6 +170,9 @@ pub fn motw(path: &Path, url: &str) -> Result<()> {
     Ok(())
 }
 pub fn sparse(f: &File) {
+    // APFS files are sparse by default.
+    #[cfg(not(windows))]
+    let _ = f;
     #[cfg(windows)]
     {
         use std::os::windows::io::AsRawHandle;
@@ -436,9 +445,11 @@ pub fn awake(on: bool) {
                 .stderr(Stdio::null())
                 .spawn()
                 .ok();
-        } else if !on && let Some(mut child) = hold.take() {
-            let _ = child.kill();
-            let _ = child.wait();
+        } else if !on {
+            if let Some(mut child) = hold.take() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
         }
     }
 }

@@ -253,7 +253,7 @@ impl WindowLock {
             let path = ui_socket();
             std::fs::create_dir_all(system::data_dir())?;
             let lock = std::fs::File::create(path.with_extension("lock"))?;
-            if lock.try_lock().is_err() {
+            if !system::try_lock(&lock) {
                 // Any connection brings the open window to the front.
                 let _ = std::os::unix::net::UnixStream::connect(path);
                 return Ok(None);
