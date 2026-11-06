@@ -4,7 +4,7 @@ Download manager for Windows, written in Rust, with a Tauri/Svelte window, tray,
 
 ## Install
 
-1. Download `Acqua-Downloader-setup.exe` from [Releases](https://github.com/CitadelAgency/dlm/releases/latest) and run it. It needs no administrator rights and installs WebView2 if it is missing.
+1. Download `Acqua-Downloader-setup.exe` from [Releases](https://github.com/CitadelAgency/acqua-downloader/releases/latest) and run it. It needs no administrator rights and installs WebView2 if it is missing.
 2. The installer has no digital signature, so Windows may show "Windows protected your PC". Click **More info**, then **Run anyway**.
 3. To capture downloads from your browser, open `chrome://extensions` (or `edge://extensions`, `brave://extensions`), turn on **Developer mode**, click **Load unpacked** and pick the extension folder. It is at `%LOCALAPPDATA%\Acqua Downloader\extension`, and the Start menu has a shortcut named **Acqua Downloader - Browser Extension**.
 
@@ -30,7 +30,7 @@ cargo build --locked --release --features custom-protocol
 
 The `custom-protocol` feature embeds `frontend/dist`, so no Vite server is needed. Rebuild the Rust side after changing the frontend. CLI only: `cargo build --release --no-default-features --bin acqua`.
 
-Installer (produces `target\release\bundle\nsis\Acqua Downloader_2.1.0_x64-setup.exe`):
+Installer (produces `target\release\bundle\nsis\Acqua Downloader_2.1.1_x64-setup.exe`):
 
 ```powershell
 npm --prefix frontend ci
@@ -97,4 +97,4 @@ For isolated tests, set `DLM_DATA_DIR`, `DLM_PIPE_SUFFIX` and `DLM_PORTABLE=1`. 
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Third-party licenses are in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt), which ships with the app. Run `node scripts/third-party-notices.mjs` after changing dependencies.
