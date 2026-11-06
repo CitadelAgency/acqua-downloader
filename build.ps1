@@ -1,4 +1,4 @@
-param([switch]$DebugBuild, [switch]$Check)
+param([switch]$DebugBuild, [switch]$Check, [switch]$Installer)
 $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
 try {
@@ -16,6 +16,14 @@ try {
         node --test extension/rules.test.js
         if ($LASTEXITCODE -ne 0) { throw 'Extension tests failed' }
     }
+    if ($Installer) {
+        # Compiled panic messages carry source paths, including the user folder.
+        $env:CARGO_ENCODED_RUSTFLAGS = "--remap-path-prefix=$HOME=~"
+        npx --yes @tauri-apps/cli@2 build --bundles nsis
+        if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
+        Write-Host 'Ready: target/release/bundle/nsis'
+        return
+    }
     $cargoArgs = @('build', '--locked', '--features', 'custom-protocol,dev-tools')
     $profile = 'debug'
     if (-not $DebugBuild) { $cargoArgs += '--release'; $profile = 'release' }
@@ -26,4 +34,7 @@ try {
     Copy-Item -LiteralPath "target/$profile/dlm-testserver.exe" -Destination build/bin/dlm-testserver.exe -Force
     Copy-Item -LiteralPath "target/$profile/dlm-bench.exe" -Destination build/bin/dlm-bench.exe -Force
     Write-Host 'Ready: build/bin/acqua.exe'
-} finally { Pop-Location }
+} finally {
+    Remove-Item Env:CARGO_ENCODED_RUSTFLAGS -ErrorAction SilentlyContinue
+    Pop-Location
+}

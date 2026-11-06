@@ -33,8 +33,7 @@ The `custom-protocol` feature embeds `frontend/dist`, so no Vite server is neede
 Installer (produces `target\release\bundle\nsis\Acqua Downloader_2.1.1_x64-setup.exe`):
 
 ```powershell
-npm --prefix frontend ci
-npx @tauri-apps/cli@2 build --bundles nsis
+.\build.ps1 -Installer
 ```
 
 ## Run
