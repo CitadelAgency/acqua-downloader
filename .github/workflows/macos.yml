@@ -34,6 +34,7 @@ jobs:
       - run: cargo clippy --all-targets --no-default-features -- -D warnings
       - run: cargo test --no-default-features --tests --no-fail-fast
       - run: node --test extension/rules.test.js
+      - run: node scripts/third-party-notices.mjs --check
       - run: npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin --bundles dmg
       - uses: actions/upload-artifact@v4
         with:
