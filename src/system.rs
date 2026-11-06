@@ -215,7 +215,7 @@ pub fn ensure_space(dir: &Path, needed: u64) -> Result<()> {
         if unsafe { libc::statvfs(path.as_ptr(), &mut stats) } != 0 {
             return Err(std::io::Error::last_os_error().into());
         }
-        stats.f_bavail as u64 * stats.f_frsize as u64
+        stats.f_bavail as u64 * stats.f_frsize
     };
     if free < needed.saturating_add(64 << 20) {
         return Err(Error::new(
