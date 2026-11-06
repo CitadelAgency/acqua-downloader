@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "dlm",
+  "version": "2.0.0",
+  "identifier": "com.dlm.app",
+  "build": { "frontendDist": "frontend/dist", "beforeBuildCommand": "npm run build", "devUrl": "http://localhost:5173", "beforeDevCommand": "npm run dev" },
+  "app": { "windows": [], "withGlobalTauri": true, "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost" } },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico", "extension/icons/icon128.png"],
+    "license": "MIT",
+    "shortDescription": "Segmented download manager for Windows",
+    "resources": { "extension/": "extension/", "LICENSE": "LICENSE" },
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "languages": ["PortugueseBR", "English"],
+        "installerHooks": "installer-hooks.nsh"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>dlm</title>
+  <style>
+    :root { color-scheme: light dark; --muted: #6b6b73; --ok: #16a34a; --bad: #b45309; }
+    @media (prefers-color-scheme: dark) { :root { --muted: #9d9da6; --ok: #3ccf72; --bad: #f0a24a; } }
+    body { font: 14px/1.45 "Segoe UI", system-ui, sans-serif; margin: 0; padding: 16px; min-width: 320px; }
+    h1 { font-size: 16px; margin: 0 0 12px; }
+    label { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .ok { color: var(--ok); }
+    .bad { color: var(--bad); }
+    button { font: inherit; padding: 5px 12px; }
+  </style>
+</head>
+<body>
+  <h1>dlm</h1>
+  <p id="status" class="muted">…</p>
+  <label><input type="checkbox" id="enabled" /> <span id="l-enabled"></span></label>
+  <label><input type="radio" name="mode" value="ask" /> <span id="l-ask"></span></label>
+  <label><input type="radio" name="mode" value="auto" /> <span id="l-auto"></span></label>
+  <p class="muted" id="rules"></p>
+  <button id="refresh"></button>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+[package]
+name = "dlm"
+version = "2.0.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Segmented download manager for Windows"
+license = "MIT"
+repository = "https://github.com/CitadelAgency/dlm"
+default-run = "dlm"
+
+[features]
+default = ["desktop"]
+desktop = ["dep:tauri", "dep:rfd", "dep:tauri-plugin-notification"]
+custom-protocol = ["tauri?/custom-protocol"]
+dev-tools = []
+
+[[bin]]
+name = "dlm-bench"
+path = "src/bin/dlm-bench.rs"
+required-features = ["dev-tools"]
+
+[[bin]]
+name = "dlm-testserver"
+path = "src/bin/dlm-testserver.rs"
+required-features = ["dev-tools"]
+
+[dependencies]
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+crc32c = "0.6"
+hex = "0.4"
+md-5 = "0.10"
+percent-encoding = "2"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "system-proxy"] }
+rusqlite = { version = "0.38", features = ["bundled", "backup"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+url = "2"
+ctrlc = "3"
+tempfile = "3"
+tauri = { version = "2", optional = true, features = ["tray-icon", "image-png"] }
+rfd = { version = "0.15", optional = true }
+tauri-plugin-notification = { version = "2", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Threading", "Win32_System_Power", "Win32_System_Console", "Win32_System_DataExchange", "Win32_UI_WindowsAndMessaging"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"

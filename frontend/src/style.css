@@ -1,0 +1,199 @@
+/* dlm — "ateliê": watercolor paper underneath, frosted glass on top.
+   Everything here is lightweight by design: system fonts only, the wash is a
+   single static WebP (no animation under backdrop-filter), grain is one tiny
+   tile, and blur radii stay small. */
+
+:root {
+  /* pigments */
+  --indigo: #2f3e8f;
+  --teal: #1d7d86;
+  --ochre: #c98f2a;
+  --rose: #c96f86;
+
+  /* paper + ink */
+  --paper: #f6f3ec;
+  --ink: #1c2233;
+  --muted: #4f576d;
+  --faint: #7c8398;
+
+  /* glass */
+  --glass: rgb(255 255 255 / 80%);
+  --glass-strong: rgb(255 255 255 / 90%);
+  --glass-edge: rgb(255 255 255 / 85%);
+  --glass-line: rgb(28 34 51 / 9%);
+  --glass-shadow: 0 1px 0 rgb(255 255 255 / 70%) inset, 0 10px 30px -14px rgb(28 34 51 / 25%), 0 1px 3px rgb(28 34 51 / 6%);
+  --glass-shadow-float: 0 1px 0 rgb(255 255 255 / 80%) inset, 0 30px 60px -24px rgb(28 34 51 / 40%), 0 2px 6px rgb(28 34 51 / 8%);
+
+  --accent: var(--indigo);
+  --accent-ink: #fff;
+  --done: #2a8a5a;
+  --warn: #a86a12;
+  --err: #b8333f;
+  --track: rgb(28 34 51 / 8%);
+  --seg-done: color-mix(in oklab, var(--indigo) 55%, white);
+
+  --wash: url(./assets/wash-light.webp);
+  --grain-opacity: 0.3;
+  --calm: rgb(246 243 236 / 28%);
+  --r-card: 16px;
+  --r-ctl: 10px;
+  --font-display: "Sitka Heading", "Sitka Display", "Cambria", "Georgia", serif;
+  --font-body: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #11151f;
+    --ink: #e9e8f1;
+    --muted: #b9bed0;
+    --faint: #858ba3;
+
+    --glass: rgb(24 29 45 / 80%);
+    --glass-strong: rgb(26 32 50 / 92%);
+    --glass-edge: rgb(255 255 255 / 10%);
+    --glass-line: rgb(255 255 255 / 9%);
+    --glass-shadow: 0 1px 0 rgb(255 255 255 / 7%) inset, 0 14px 34px -14px rgb(0 0 0 / 60%), 0 1px 3px rgb(0 0 0 / 30%);
+    --glass-shadow-float: 0 1px 0 rgb(255 255 255 / 9%) inset, 0 40px 70px -24px rgb(0 0 0 / 75%), 0 2px 6px rgb(0 0 0 / 40%);
+
+    --accent: #7aa2ff;
+    --accent-ink: #0b1020;
+    --done: #4fd08a;
+    --warn: #e9b35b;
+    --err: #ff7a85;
+    --track: rgb(255 255 255 / 9%);
+    --seg-done: color-mix(in oklab, #7aa2ff 45%, #2a3350);
+
+    --wash: url(./assets/wash-dark.webp);
+    --grain-opacity: 0.1;
+    --calm: rgb(17 21 31 / 45%);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.45 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+#app { height: 100%; position: relative; isolation: isolate; }
+#app::after { content: ''; position: fixed; inset: 0; border: 1px solid var(--glass-line); pointer-events: none; z-index: 80; }
+
+/* ---------- paper layer ---------- */
+.paper {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper) var(--wash) center / cover no-repeat;
+}
+.paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--calm);
+}
+.paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url(./assets/grain.webp) 0 0 / 512px 512px repeat;
+  mix-blend-mode: multiply;
+  opacity: var(--grain-opacity);
+  pointer-events: none;
+}
+
+/* ---------- glass primitives ---------- */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  outline: 1px solid var(--glass-line);
+  outline-offset: -2px;
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+  border-radius: var(--r-card);
+}
+.glass.strong {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  backdrop-filter: blur(22px) saturate(1.4);
+  box-shadow: var(--glass-shadow-float);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass.strong { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--glass-strong); }
+}
+
+/* ---------- controls ---------- */
+button {
+  font: inherit;
+  font-weight: 500;
+  color: inherit;
+  background: rgb(255 255 255 / 45%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 60%) inset, 0 1px 2px rgb(28 34 51 / 6%);
+  border-radius: var(--r-ctl);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+@media (prefers-color-scheme: dark) {
+  button { background: rgb(255 255 255 / 7%); box-shadow: 0 1px 0 rgb(255 255 255 / 6%) inset; }
+}
+button:hover { background: rgb(255 255 255 / 70%); transform: translateY(-1px); }
+@media (prefers-color-scheme: dark) { button:hover { background: rgb(255 255 255 / 12%); } }
+button:active { transform: translateY(0); }
+button.primary {
+  background: linear-gradient(160deg, color-mix(in oklab, var(--accent) 88%, white) 0%, var(--accent) 60%, color-mix(in oklab, var(--accent) 80%, var(--teal)) 100%);
+  color: var(--accent-ink);
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 25%) inset, 0 8px 18px -8px color-mix(in oklab, var(--accent) 70%, transparent);
+}
+button.primary:hover { filter: brightness(1.06); }
+button.ghost { background: transparent; border-color: transparent; box-shadow: none; }
+button.ghost:hover { background: rgb(28 34 51 / 7%); }
+@media (prefers-color-scheme: dark) { button.ghost:hover { background: rgb(255 255 255 / 9%); } }
+button.icon { padding: 6px; line-height: 0; border-radius: 9px; }
+button:disabled { opacity: 0.45; cursor: default; transform: none !important; filter: none !important; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+input, select {
+  font: inherit;
+  color: inherit;
+  background: rgb(255 255 255 / 55%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: 0 1px 2px rgb(28 34 51 / 6%) inset;
+  border-radius: var(--r-ctl);
+  padding: 7px 11px;
+  user-select: text;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+@media (prefers-color-scheme: dark) { input, select { background: rgb(0 0 0 / 22%); box-shadow: 0 1px 2px rgb(0 0 0 / 30%) inset; } }
+input:focus { background: rgb(255 255 255 / 85%); }
+@media (prefers-color-scheme: dark) { input:focus { background: rgb(0 0 0 / 35%); } }
+input::placeholder { color: var(--faint); }
+input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+
+code { font-family: "Cascadia Mono", ui-monospace, Consolas, monospace; font-size: 12.5px; }
+
+svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.01em; }
+
+/* ---------- motion ---------- */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-thumb { background: rgb(28 34 51 / 18%); border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: rgb(28 34 51 / 32%); }
+@media (prefers-color-scheme: dark) { ::-webkit-scrollbar-thumb { background-color: rgb(255 255 255 / 18%); } }

@@ -1,0 +1,11 @@
+.work/
+target/
+/bin/
+/build/
+/gen/schemas/
+/legacy/
+/handoffs/
+/MIGRATION.md
+frontend/node_modules/
+frontend/dist/
+frontend/package.json.md5
