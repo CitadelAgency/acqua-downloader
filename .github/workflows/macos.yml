@@ -28,6 +28,7 @@ jobs:
           restore-keys: macos-
       - run: npm ci
         working-directory: frontend
+      - run: cargo clippy --all-targets --no-default-features -- -D warnings
       - run: cargo test --no-default-features --tests --no-fail-fast
       - run: node --test extension/rules.test.js
       - run: npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin --bundles dmg

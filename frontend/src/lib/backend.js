@@ -20,6 +20,7 @@ export const GetSettings = () => call('GetSettings')
 export const SaveSettings = (settings) => call('SaveSettings', settings)
 export const ChooseDir = () => call('ChooseDir')
 export const GetInfo = () => call('GetInfo')
+export const ShowExtension = () => call('ShowExtension')
 export const ChromeList = () => call('ChromeList')
 export const ChromeImport = (items) => call('ChromeImport', items)
 export function EventsOn(name, callback) {

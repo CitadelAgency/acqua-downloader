@@ -80,10 +80,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             lang: "en".into(),
-            dir: PathBuf::from(std::env::var_os("USERPROFILE").unwrap_or_else(|| ".".into()))
-                .join("Downloads")
-                .display()
-                .to_string(),
+            dir: system::home().join("Downloads").display().to_string(),
             max_active: 3,
             max_conns: 16,
             global_limit_bps: 0,

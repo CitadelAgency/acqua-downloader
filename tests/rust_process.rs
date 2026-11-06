@@ -1,11 +1,9 @@
-#![cfg(windows)]
 use dlm::{
     ipc,
     testserver::{Server, hash},
 };
 use serde_json::{Value, json};
 use std::{
-    os::windows::process::CommandExt,
     path::Path,
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
@@ -13,6 +11,26 @@ use std::{
 struct Guard(Child);
 fn test_exe() -> String {
     std::env::var("DLM_TEST_EXE").unwrap_or_else(|_| env!("CARGO_BIN_EXE_acqua").into())
+}
+fn command() -> Command {
+    #[cfg(windows)]
+    use std::os::windows::process::CommandExt;
+    #[cfg_attr(not(windows), allow(unused_mut))]
+    let mut command = Command::new(test_exe());
+    #[cfg(windows)]
+    command.creation_flags(0x08000000);
+    command
+}
+#[cfg(windows)]
+fn connect(path: &str) -> std::io::Result<std::fs::File> {
+    std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+}
+#[cfg(unix)]
+fn connect(path: &str) -> std::io::Result<std::os::unix::net::UnixStream> {
+    std::os::unix::net::UnixStream::connect(path)
 }
 impl Drop for Guard {
     fn drop(&mut self) {
@@ -22,9 +40,8 @@ impl Drop for Guard {
 }
 fn spawn(args: &[&str]) -> Guard {
     Guard(
-        Command::new(test_exe())
+        command()
             .args(args)
-            .creation_flags(0x08000000)
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
@@ -34,11 +51,7 @@ fn spawn(args: &[&str]) -> Guard {
 fn call(path: &str, value: Value) -> Value {
     let start = Instant::now();
     let mut f = loop {
-        match std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path)
-        {
+        match connect(path) {
             Ok(f) => break f,
             Err(e) if e.raw_os_error() == Some(231) && start.elapsed() < Duration::from_secs(2) => {
                 std::thread::sleep(Duration::from_millis(10))
@@ -51,12 +64,7 @@ fn call(path: &str, value: Value) -> Value {
 }
 fn wait(path: &str) {
     let start = Instant::now();
-    while std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(path)
-        .is_err()
-    {
+    while connect(path).is_err() {
         assert!(start.elapsed() < Duration::from_secs(10));
         std::thread::sleep(Duration::from_millis(50));
     }
@@ -65,15 +73,21 @@ fn wait(path: &str) {
 fn daemon_ipc_persistence_and_native_origin() {
     let dir = tempfile::tempdir().unwrap();
     let suffix = format!("test-{}", std::process::id());
+    #[cfg(windows)]
     let path = format!(r"\\.\pipe\dlm-{}-{suffix}", ipc::sid().unwrap());
+    #[cfg(unix)]
+    let path = dir
+        .path()
+        .join(format!("dlm-{suffix}.sock"))
+        .display()
+        .to_string();
     let server = Server::start(100000).unwrap();
     let mut daemon = Guard(
-        Command::new(test_exe())
+        command()
             .arg("--daemon")
             .env("DLM_DATA_DIR", dir.path())
             .env("DLM_PIPE_SUFFIX", &suffix)
             .env("DLM_PORTABLE", "1")
-            .creation_flags(0x08000000)
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
@@ -81,12 +95,11 @@ fn daemon_ipc_persistence_and_native_origin() {
     );
     wait(&path);
     assert_eq!(call(&path, json!({"type":"ping"}))["ok"], true);
-    let mut native = Command::new(test_exe())
+    let mut native = command()
         .arg(dlm::native::ORIGIN)
         .env("DLM_DATA_DIR", dir.path())
         .env("DLM_PIPE_SUFFIX", &suffix)
         .env("DLM_PORTABLE", "1")
-        .creation_flags(0x08000000)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -126,11 +139,10 @@ fn daemon_ipc_persistence_and_native_origin() {
         true
     );
     assert!(daemon.0.wait().unwrap().success());
-    let mut host = Command::new(test_exe())
+    let mut host = command()
         .arg("chrome-extension://untrusted/")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .creation_flags(0x08000000)
         .spawn()
         .unwrap();
     let response: Value =
@@ -154,7 +166,7 @@ fn cli_exit_codes_and_hash() {
             4,
         ),
     ] {
-        let mut cmd = Command::new(test_exe());
+        let mut cmd = command();
         cmd.args([
             "get",
             &s.url(path),
@@ -164,8 +176,7 @@ fn cli_exit_codes_and_hash() {
             &format!("file-{code}.bin"),
             "-q",
         ])
-        .args(extra)
-        .creation_flags(0x08000000);
+        .args(extra);
         let out = cmd.output().unwrap();
         assert_eq!(
             out.status.code(),
@@ -174,9 +185,8 @@ fn cli_exit_codes_and_hash() {
             String::from_utf8_lossy(&out.stderr)
         );
     }
-    let out = Command::new(test_exe())
+    let out = command()
         .args(["get", "ftp://example.com/file", "-q"])
-        .creation_flags(0x08000000)
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(2));
@@ -206,7 +216,7 @@ fn abrupt_process_kills_resume_without_corruption() {
             break;
         }
     }
-    let status = Command::new(test_exe())
+    let status = command()
         .args([
             "get",
             &s.url("/slow.bin"),
@@ -216,7 +226,6 @@ fn abrupt_process_kills_resume_without_corruption() {
             "crash.bin",
             "-q",
         ])
-        .creation_flags(0x08000000)
         .stdout(Stdio::null())
         .status()
         .unwrap();

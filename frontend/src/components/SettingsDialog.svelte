@@ -1,7 +1,8 @@
 <script>
   import { t, setLang, languages } from '../lib/i18n.svelte.js'
   import { errText, parseRate, rateText } from '../lib/format.js'
-  import { GetSettings, SaveSettings, ChooseDir, GetInfo } from '../lib/backend.js'
+  import { GetSettings, SaveSettings, ChooseDir, GetInfo, ShowExtension } from '../lib/backend.js'
+  import { isMac } from '../lib/platform.js'
 
   let { onclose, toast } = $props()
   let s = $state(null)
@@ -77,7 +78,7 @@
     </div>
 
     <label class="check"><input type="checkbox" bind:checked={s.watchClipboard} /> {t('s_clipboard')}</label>
-    <label class="check"><input type="checkbox" bind:checked={s.autostart} /> {t('s_autostart')}</label>
+    <label class="check"><input type="checkbox" bind:checked={s.autostart} /> {t(isMac ? 's_autostartMac' : 's_autostart')}</label>
     <label class="check"><input type="checkbox" bind:checked={s.notify} /> {t('s_notify')}</label>
 
     <h3>{t('s_extension')}</h3>
@@ -91,6 +92,10 @@
         <code>{info.extensionId}</code>
         <span></span>
         <span class:ok={info.hostOk} class:bad={!info.hostOk}>{info.hostOk ? '✓ ' + t('s_hostOk') : t('s_hostBad')}</span>
+        {#if isMac}
+          <span></span>
+          <button onclick={() => ShowExtension().catch((e) => toast(errText(e), 'err'))}>{t('s_showExtension')}</button>
+        {/if}
       {/if}
     </div>
   {/if}

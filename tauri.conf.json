@@ -9,10 +9,11 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "icon": ["icons/icon.ico", "extension/icons/icon128.png"],
+    "icon": ["icons/icon.ico", "icons/icon.icns", "extension/icons/icon128.png"],
     "license": "MIT",
-    "shortDescription": "Segmented download manager for Windows",
+    "shortDescription": "Segmented download manager",
     "resources": { "extension/": "extension/", "LICENSE": "LICENSE" },
+    "macOS": { "minimumSystemVersion": "13.0", "signingIdentity": "-" },
     "windows": {
       "webviewInstallMode": { "type": "downloadBootstrapper" },
       "nsis": {

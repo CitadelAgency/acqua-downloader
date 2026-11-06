@@ -5,6 +5,7 @@ use crate::{
 use serde_json::{Value, json};
 pub const EXTENSION_ID: &str = "djlnbnckkmhijbocpoehdlcfnkfnikbi";
 pub const ORIGIN: &str = "chrome-extension://djlnbnckkmhijbocpoehdlcfnkfnikbi/";
+#[cfg(windows)]
 const ROOTS: [&str; 4] = [
     r"Software\Google\Chrome\NativeMessagingHosts\com.dlm.host",
     r"Software\Microsoft\Edge\NativeMessagingHosts\com.dlm.host",
@@ -13,6 +14,22 @@ const ROOTS: [&str; 4] = [
 ];
 pub fn manifest_path() -> std::path::PathBuf {
     system::data_dir().join("com.dlm.host.json")
+}
+#[cfg(not(windows))]
+fn browser_manifests() -> Vec<std::path::PathBuf> {
+    [
+        "Google/Chrome",
+        "Google/Chrome Beta",
+        "Google/Chrome Canary",
+        "Microsoft Edge",
+        "BraveSoftware/Brave-Browser",
+        "Chromium",
+    ]
+    .iter()
+    .map(|browser| system::app_support().join(browser))
+    .filter(|dir| dir.is_dir())
+    .map(|dir| dir.join("NativeMessagingHosts/com.dlm.host.json"))
+    .collect()
 }
 pub fn register() -> Result<()> {
     std::fs::create_dir_all(system::data_dir())?;
@@ -29,12 +46,27 @@ pub fn register() -> Result<()> {
             winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER).create_subkey(root)?;
         k.set_value("", &path.display().to_string())?;
     }
+    #[cfg(not(windows))]
+    for target in browser_manifests() {
+        if let Some(dir) = target.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
+        std::fs::copy(&path, target)?;
+    }
     Ok(())
 }
 pub fn unregister() -> Result<()> {
     #[cfg(windows)]
     for root in ROOTS {
         match winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER).delete_subkey(root) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+    #[cfg(not(windows))]
+    for target in browser_manifests() {
+        match std::fs::remove_file(target) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => return Err(e.into()),
@@ -55,7 +87,7 @@ pub fn registered() -> bool {
     }
     #[cfg(not(windows))]
     {
-        false
+        browser_manifests().iter().any(|target| target.exists())
     }
 }
 pub fn ensure_daemon() -> Result<()> {

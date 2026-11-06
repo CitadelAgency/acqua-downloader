@@ -18,6 +18,11 @@ async fn rpc(method: String, args: Vec<Value>) -> std::result::Result<Value, Str
                     .unwrap_or_default()
             ));
         }
+        if method == "ShowExtension" {
+            let dir = system::extension_dir().map_err(|e| e.to_string())?;
+            system::reveal(&dir, &dir).map_err(|e| e.to_string())?;
+            return Ok(Value::Null);
+        }
         let response = ipc::call(&json!({"type":"rpc","method":method,"args":args}))
             .map_err(|e| e.to_string())?;
         if response["ok"] == true {
@@ -30,6 +35,12 @@ async fn rpc(method: String, args: Vec<Value>) -> std::result::Result<Value, Str
     .map_err(|e| e.to_string())?
 }
 pub fn window() -> Result<()> {
+    if system::misplaced() {
+        return Err(Error::new(
+            "misplaced",
+            "Move Acqua Downloader to the Applications folder and open it again.",
+        ));
+    }
     let _lock = WindowLock::acquire()?;
     if _lock.is_none() {
         return Ok(());
@@ -38,18 +49,40 @@ pub fn window() -> Result<()> {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![rpc])
         .setup(|app| {
-            tauri::WebviewWindowBuilder::new(
+            let window = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
             )
             .title("Acqua Downloader")
-            .decorations(false)
             .shadow(true)
             .inner_size(980., 640.)
             .min_inner_size(560., 380.)
-            .data_directory(system::data_dir().join("webview-rust"))
-            .build()?;
+            .data_directory(system::data_dir().join("webview-rust"));
+            #[cfg(windows)]
+            let window = window.decorations(false);
+            #[cfg(target_os = "macos")]
+            let window = window
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true);
+            window.build()?;
+            #[cfg(unix)]
+            {
+                use tauri::Manager as _;
+                let path = ui_socket();
+                let _ = std::fs::remove_file(&path);
+                let listener = std::os::unix::net::UnixListener::bind(path)?;
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    for _ in listener.incoming() {
+                        if let Some(window) = handle.get_webview_window("main") {
+                            let _ = window.unminimize();
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                });
+            }
             let handle = app.handle().clone();
             std::thread::spawn(move || {
                 let mut failures = 0;
@@ -85,6 +118,8 @@ pub fn tray(m: Arc<DownloadManager>) -> Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .setup(move |app| {
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             let open = MenuItem::with_id(app, "open", "Open Acqua Downloader", true, None::<&str>)?;
             let pause = MenuItem::with_id(app, "pause", "Pause all", true, None::<&str>)?;
             let resume = MenuItem::with_id(app, "resume", "Resume all", true, None::<&str>)?;
@@ -159,11 +194,26 @@ pub fn tray(m: Arc<DownloadManager>) -> Result<()> {
         })
         .build(tauri::generate_context!())
         .map_err(|e| Error::new("desktop", e.to_string()))?
-        .run(|_, _| {});
+        .run(|_, _event| {
+            // Opening the app in Finder while the tray runs reaches this process.
+            #[cfg(target_os = "macos")]
+            if matches!(_event, tauri::RunEvent::Reopen { .. }) {
+                let _ = system::spawn_self("--ui");
+            }
+        });
     m.shutdown();
     Ok(())
 }
-struct WindowLock(#[cfg(windows)] windows_sys::Win32::Foundation::HANDLE);
+#[cfg(unix)]
+fn ui_socket() -> std::path::PathBuf {
+    system::data_dir().join(format!("ui{}.sock", ipc::pipe_suffix()))
+}
+struct WindowLock(
+    #[cfg(windows)] windows_sys::Win32::Foundation::HANDLE,
+    #[cfg(unix)]
+    #[allow(dead_code)]
+    std::fs::File,
+);
 impl WindowLock {
     fn acquire() -> Result<Option<Self>> {
         #[cfg(windows)]
@@ -198,9 +248,17 @@ impl WindowLock {
             }
             Ok(Some(Self(handle)))
         }
-        #[cfg(not(windows))]
+        #[cfg(unix)]
         {
-            Ok(Some(Self()))
+            let path = ui_socket();
+            std::fs::create_dir_all(system::data_dir())?;
+            let lock = std::fs::File::create(path.with_extension("lock"))?;
+            if lock.try_lock().is_err() {
+                // Any connection brings the open window to the front.
+                let _ = std::os::unix::net::UnixStream::connect(path);
+                return Ok(None);
+            }
+            Ok(Some(Self(lock)))
         }
     }
 }

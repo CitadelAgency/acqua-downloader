@@ -39,6 +39,22 @@ pub fn pipe_suffix() -> String {
         .map(|s| format!("-{s}"))
         .unwrap_or_default()
 }
+fn timeout_secs(value: &serde_json::Value) -> u64 {
+    if value["type"] == "ping" { 1 } else { 120 }
+}
+fn respond(
+    stream: &mut (impl Read + Write),
+    handler: &Arc<dyn Fn(serde_json::Value) -> serde_json::Value + Send + Sync>,
+) {
+    if let Ok(raw) = read_msg(stream) {
+        let response = serde_json::from_slice(&raw)
+            .map(|r| handler(r))
+            .unwrap_or_else(|e| serde_json::json!({"ok":false,"error":e.to_string()}));
+        if let Ok(bytes) = serde_json::to_vec(&response) {
+            let _ = write_msg(stream, &bytes);
+        }
+    }
+}
 #[cfg(windows)]
 pub fn pipe_name() -> Result<String> {
     Ok(format!(r"\\.\pipe\dlm-{}{}", sid()?, pipe_suffix()))
@@ -148,10 +164,9 @@ pub fn call(value: &serde_json::Value) -> Result<serde_json::Value> {
             Err(e) => return Err(Error::new("not_running", e.to_string())),
         }
     };
-    let timeout = if value["type"] == "ping" { 1 } else { 120 };
     let mut f = TimedPipe {
         file,
-        deadline: std::time::Instant::now() + std::time::Duration::from_secs(timeout),
+        deadline: std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs(value)),
     };
     write_msg(&mut f, &serde_json::to_vec(value)?)?;
     Ok(serde_json::from_slice(&read_msg(&mut f)?)?)
@@ -234,24 +249,63 @@ pub fn serve(
                     file: f,
                     deadline: std::time::Instant::now() + std::time::Duration::from_secs(120),
                 };
-                if let Ok(raw) = read_msg(&mut f) {
-                    let response = serde_json::from_slice(&raw)
-                        .map(|r| handle(r))
-                        .unwrap_or_else(|e| serde_json::json!({"ok":false,"error":e.to_string()}));
-                    if let Ok(bytes) = serde_json::to_vec(&response) {
-                        let _ = write_msg(&mut f, &bytes);
-                    }
-                }
+                respond(&mut f, &handle);
             });
         }
     });
     Ok(())
 }
-#[cfg(not(windows))]
-pub fn call(_: &serde_json::Value) -> Result<serde_json::Value> {
-    Err(Error::new("unsupported", "named pipes require Windows"))
+#[cfg(unix)]
+pub fn socket_path() -> std::path::PathBuf {
+    crate::system::data_dir().join(format!("dlm{}.sock", pipe_suffix()))
 }
-#[cfg(not(windows))]
-pub fn serve(_: Arc<dyn Fn(serde_json::Value) -> serde_json::Value + Send + Sync>) -> Result<()> {
-    Err(Error::new("unsupported", "named pipes require Windows"))
+#[cfg(unix)]
+pub fn call(value: &serde_json::Value) -> Result<serde_json::Value> {
+    let mut stream = std::os::unix::net::UnixStream::connect(socket_path())
+        .map_err(|e| Error::new("not_running", e.to_string()))?;
+    let timeout = Some(std::time::Duration::from_secs(timeout_secs(value)));
+    stream.set_read_timeout(timeout)?;
+    stream.set_write_timeout(timeout)?;
+    write_msg(&mut stream, &serde_json::to_vec(value)?)?;
+    Ok(serde_json::from_slice(&read_msg(&mut stream)?)?)
+}
+#[cfg(unix)]
+pub fn serve(
+    handler: Arc<dyn Fn(serde_json::Value) -> serde_json::Value + Send + Sync>,
+) -> Result<()> {
+    use std::{
+        fs::{self, Permissions},
+        os::unix::{fs::PermissionsExt, net::UnixListener},
+        time::Duration,
+    };
+    let path = socket_path();
+    let dir = crate::system::data_dir();
+    fs::create_dir_all(&dir)?;
+    // Only this user may reach the socket, like the pipe's ACL on Windows.
+    fs::set_permissions(&dir, Permissions::from_mode(0o700))?;
+    // Held until the process exits, so one daemon runs and a crash leaves no lock.
+    let lock = fs::File::create(path.with_extension("lock"))?;
+    lock.try_lock()
+        .map_err(|_| Error::new("already_running", "another instance is running"))?;
+    std::mem::forget(lock);
+    match fs::remove_file(&path) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e.into()),
+    }
+    let listener = UnixListener::bind(&path)?;
+    fs::set_permissions(&path, Permissions::from_mode(0o600))?;
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { continue };
+            let handle = handler.clone();
+            std::thread::spawn(move || {
+                let timeout = Some(Duration::from_secs(120));
+                let _ = stream.set_read_timeout(timeout);
+                let _ = stream.set_write_timeout(timeout);
+                respond(&mut stream, &handle);
+            });
+        }
+    });
+    Ok(())
 }

@@ -4,6 +4,7 @@
   import SettingsDialog from './components/SettingsDialog.svelte'
   import WindowControls from './components/WindowControls.svelte'
   import { t, setLang } from './lib/i18n.svelte.js'
+  import { isMac } from './lib/platform.js'
   import { errText, bytes } from './lib/format.js'
   import { List, AddText, PauseAll, ResumeAll, GetSettings, EventsOn } from './lib/backend.js'
   import mark from './assets/mark.webp'
@@ -103,7 +104,7 @@
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
       </button>
     </div>
-    <WindowControls onerror={(e) => toast(errText(e), 'err')} />
+    {#if !isMac}<WindowControls onerror={(e) => toast(errText(e), 'err')} />{/if}
   </header>
 
   <form class="add glass" onsubmit={(e) => { e.preventDefault(); addText(link) }}>
@@ -179,6 +180,8 @@
 
   /* Right padding keeps the tools clear of the window controls in the corner. */
   header { display: flex; align-items: center; gap: 12px; padding: 18px calc(150px - clamp(14px, 4vw, 40px)) 12px 2px; }
+  /* On macOS the native traffic lights sit on the left instead. */
+  :global(html.mac) header { padding-left: calc(78px - clamp(14px, 4vw, 40px)); padding-right: 2px; }
   .brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
   .brand img { filter: drop-shadow(0 2px 4px rgb(28 34 51 / 15%)); }
   .brand h1 { margin: 0; font-size: 26px; line-height: 1; letter-spacing: -0.02em; }

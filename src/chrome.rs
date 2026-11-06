@@ -112,16 +112,31 @@ pub fn list_history(profile_dir: &Path, browser: &str, profile: &str) -> Result<
     Ok(items)
 }
 pub fn all() -> Result<Vec<Item>> {
-    let root = PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_default());
+    #[cfg(windows)]
+    let (root, browsers) = (
+        PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_default()),
+        [
+            ("Chrome", r"Google\Chrome\User Data"),
+            ("Chrome Beta", r"Google\Chrome Beta\User Data"),
+            ("Chrome Canary", r"Google\Chrome SxS\User Data"),
+            ("Edge", r"Microsoft\Edge\User Data"),
+            ("Brave", r"BraveSoftware\Brave-Browser\User Data"),
+        ],
+    );
+    #[cfg(not(windows))]
+    let (root, browsers) = (
+        system::app_support(),
+        [
+            ("Chrome", "Google/Chrome"),
+            ("Chrome Beta", "Google/Chrome Beta"),
+            ("Chrome Canary", "Google/Chrome Canary"),
+            ("Edge", "Microsoft Edge"),
+            ("Brave", "BraveSoftware/Brave-Browser"),
+        ],
+    );
     let mut items = Vec::new();
     let mut errors = Vec::new();
-    for (name, dir) in [
-        ("Chrome", r"Google\Chrome\User Data"),
-        ("Chrome Beta", r"Google\Chrome Beta\User Data"),
-        ("Chrome Canary", r"Google\Chrome SxS\User Data"),
-        ("Edge", r"Microsoft\Edge\User Data"),
-        ("Brave", r"BraveSoftware\Brave-Browser\User Data"),
-    ] {
+    for (name, dir) in browsers {
         let path = root.join(dir);
         let Ok(entries) = fs::read_dir(&path) else {
             continue;
