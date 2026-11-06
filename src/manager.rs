@@ -259,6 +259,11 @@ impl Manager {
         }))
     }
     pub fn start(self: &Arc<Self>) {
+        // Saving credentials happens under the manager lock: load the key before that.
+        #[cfg(not(windows))]
+        std::thread::spawn(|| {
+            let _ = system::crypt(b"warm", false);
+        });
         let weak = Arc::downgrade(self);
         system::watch_network(move || {
             let Some(m) = weak.upgrade() else {

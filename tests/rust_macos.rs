@@ -103,11 +103,10 @@ fn clipboard_text_round_trips() {
 }
 
 #[test]
-fn host_manifest_goes_only_to_installed_browsers() {
+fn host_manifest_reaches_browsers_installed_later() {
     let home = tempfile::tempdir().unwrap();
     let support = home.path().join("Library/Application Support");
     let chrome = support.join("Google/Chrome");
-    std::fs::create_dir_all(&chrome).unwrap();
     let run = |action: &str| {
         let status = acqua()
             .arg(action)
@@ -123,14 +122,18 @@ fn host_manifest_goes_only_to_installed_browsers() {
         serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
     assert_eq!(host["path"], env!("CARGO_BIN_EXE_acqua"));
     assert_eq!(host["allowed_origins"][0], dlm::native::ORIGIN);
-    assert!(!support.join("Microsoft Edge").exists());
+    let edge = support.join("Microsoft Edge/NativeMessagingHosts/com.dlm.host.json");
+    assert!(edge.exists());
     run("unregister-host");
     assert!(!manifest.exists());
+    assert!(!edge.exists());
 }
 
 #[test]
 fn second_daemon_refuses_and_stale_socket_is_replaced() {
+    use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o750)).unwrap();
     let socket = dir.path().join("dlm-lock.sock");
     std::fs::write(&socket, b"left by a crash").unwrap();
     let start = || {
@@ -154,6 +157,8 @@ fn second_daemon_refuses_and_stale_socket_is_replaced() {
     assert_eq!(mode & 0o777, 0o600);
     let mut second = start();
     assert!(!second.wait().unwrap().success());
+    let folder = std::fs::metadata(dir.path()).unwrap().permissions().mode();
+    assert_eq!(folder & 0o777, 0o750, "a chosen folder keeps its mode");
     first.kill().unwrap();
     first.wait().unwrap();
 }

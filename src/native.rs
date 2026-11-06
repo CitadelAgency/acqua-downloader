@@ -26,9 +26,11 @@ fn browser_manifests() -> Vec<std::path::PathBuf> {
         "Chromium",
     ]
     .iter()
-    .map(|browser| system::app_support().join(browser))
-    .filter(|dir| dir.is_dir())
-    .map(|dir| dir.join("NativeMessagingHosts/com.dlm.host.json"))
+    .map(|browser| {
+        system::app_support()
+            .join(browser)
+            .join("NativeMessagingHosts/com.dlm.host.json")
+    })
     .collect()
 }
 pub fn register() -> Result<()> {
@@ -87,7 +89,7 @@ pub fn registered() -> bool {
     }
     #[cfg(not(windows))]
     {
-        browser_manifests().iter().any(|target| target.exists())
+        browser_manifests().iter().all(|target| target.exists())
     }
 }
 pub fn ensure_daemon() -> Result<()> {

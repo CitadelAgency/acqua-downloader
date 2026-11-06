@@ -45,8 +45,15 @@ pub fn misplaced() -> bool {
     #[cfg(not(windows))]
     if let Ok(exe) = std::env::current_exe() {
         let path = exe.to_string_lossy();
-        return path.contains(".app/Contents/MacOS/")
-            && (path.starts_with("/Volumes/") || path.contains("/AppTranslocation/"));
+        if !path.contains(".app/Contents/MacOS/") {
+            return false;
+        }
+        let mut stats: libc::statvfs = unsafe { std::mem::zeroed() };
+        let read_only = c_path(&exe).is_ok_and(|p| {
+            let status = unsafe { libc::statvfs(p.as_ptr(), &mut stats) };
+            status == 0 && stats.f_flag & libc::ST_RDONLY != 0
+        });
+        return read_only || path.contains("/AppTranslocation/");
     }
     false
 }
@@ -132,11 +139,17 @@ pub fn rename_no_replace(from: &Path, to: &Path) -> std::io::Result<()> {
     if !matches!(error.raw_os_error(), Some(libc::ENOTSUP | libc::EINVAL)) {
         return Err(error);
     }
-    // exFAT and network volumes have no exclusive rename.
-    if to.try_exists()? {
-        return Err(std::io::ErrorKind::AlreadyExists.into());
+    // exFAT and network volumes have no exclusive rename: claim the name, then
+    // replace the claim. create_new fails with AlreadyExists if the name is taken.
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(to)?;
+    let moved = std::fs::rename(from, to);
+    if moved.is_err() {
+        let _ = std::fs::remove_file(to);
     }
-    std::fs::rename(from, to)
+    moved
 }
 pub fn motw(path: &Path, url: &str) -> Result<()> {
     #[cfg(windows)]
@@ -273,40 +286,59 @@ pub fn crypt(bytes: &[u8], decrypt: bool) -> Result<Vec<u8>> {
 }
 #[cfg(not(windows))]
 const KEYCHAIN_ITEM: [&str; 4] = ["-s", "com.dlm.app", "-a", "download-secrets"];
+/// A locked Keychain can wait on a dialog forever and callers hold the manager
+/// lock, so every call has a deadline.
+#[cfg(not(windows))]
+fn security(args: &[&str], input: Option<&str>) -> Option<String> {
+    use std::{
+        io::{Read, Write},
+        process::Stdio,
+        time::{Duration, Instant},
+    };
+    let mut child = Command::new("/usr/bin/security")
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    if let (Some(mut stdin), Some(input)) = (child.stdin.take(), input) {
+        let _ = stdin.write_all(input.as_bytes());
+    }
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match child.try_wait().ok()? {
+            Some(status) if status.success() => break,
+            Some(_) => return None,
+            None if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+            None => std::thread::sleep(Duration::from_millis(10)),
+        }
+    }
+    let mut output = String::new();
+    child.stdout.take()?.read_to_string(&mut output).ok()?;
+    Some(output)
+}
 #[cfg(not(windows))]
 fn keychain_read() -> Option<[u8; 32]> {
-    let out = Command::new("/usr/bin/security")
-        .arg("find-generic-password")
-        .args(KEYCHAIN_ITEM)
-        .arg("-w")
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    let text = String::from_utf8(out.stdout).ok()?;
+    let mut args = vec!["find-generic-password"];
+    args.extend(KEYCHAIN_ITEM);
+    args.push("-w");
+    let text = security(&args, None)?;
     hex::decode(text.trim()).ok()?.try_into().ok()
 }
 #[cfg(not(windows))]
-fn keychain_add(key: &[u8; 32]) -> Result<()> {
-    use std::{io::Write, process::Stdio};
+fn keychain_add(key: &[u8; 32]) {
     // Through stdin: arguments are visible to every process.
-    let mut child = Command::new("/usr/bin/security")
-        .arg("-i")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?;
     let line = format!(
         "add-generic-password {} -w {}\n",
         KEYCHAIN_ITEM.join(" "),
         hex::encode(key)
     );
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(line.as_bytes())?;
-    }
-    child.wait()?;
-    Ok(())
+    security(&["-i"], Some(&line));
 }
 /// Same protection as DPAPI: readable by this user's processes, not by whoever
 /// copies the database. `security` owns the item, so an app with no stable
@@ -322,7 +354,7 @@ fn secret_key() -> Result<&'static [u8; 32]> {
         Some(key) => key,
         None => {
             // Never replaces an item: two processes racing here read the winner's key.
-            keychain_add(&Aes256Gcm::generate_key(OsRng).into())?;
+            keychain_add(&Aes256Gcm::generate_key(OsRng).into());
             keychain_read()
                 .ok_or_else(|| Error::new("keychain", "could not use the macOS Keychain"))?
         }

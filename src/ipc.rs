@@ -260,6 +260,14 @@ pub fn socket_path() -> std::path::PathBuf {
     crate::system::data_dir().join(format!("dlm{}.sock", pipe_suffix()))
 }
 #[cfg(unix)]
+fn same_user(stream: &std::os::unix::net::UnixStream) -> bool {
+    use std::os::fd::AsRawFd;
+    let (mut uid, mut gid) = (0, 0);
+    unsafe {
+        libc::getpeereid(stream.as_raw_fd(), &mut uid, &mut gid) == 0 && uid == libc::geteuid()
+    }
+}
+#[cfg(unix)]
 pub fn call(value: &serde_json::Value) -> Result<serde_json::Value> {
     let mut stream = std::os::unix::net::UnixStream::connect(socket_path())
         .map_err(|e| Error::new("not_running", e.to_string()))?;
@@ -281,8 +289,9 @@ pub fn serve(
     let path = socket_path();
     let dir = crate::system::data_dir();
     fs::create_dir_all(&dir)?;
-    // Only this user may reach the socket, like the pipe's ACL on Windows.
-    fs::set_permissions(&dir, Permissions::from_mode(0o700))?;
+    if std::env::var_os("DLM_DATA_DIR").is_none() {
+        fs::set_permissions(&dir, Permissions::from_mode(0o700))?;
+    }
     // Held until the process exits, so one daemon runs and a crash leaves no lock.
     let lock = fs::File::create(path.with_extension("lock"))?;
     if !crate::system::try_lock(&lock) {
@@ -299,6 +308,11 @@ pub fn serve(
     std::thread::spawn(move || {
         for stream in listener.incoming() {
             let Ok(mut stream) = stream else { continue };
+            // Only this user, like the pipe's ACL on Windows. Modes alone do not
+            // cover an inherited macOS ACL.
+            if !same_user(&stream) {
+                continue;
+            }
             let handle = handler.clone();
             std::thread::spawn(move || {
                 let timeout = Some(Duration::from_secs(120));

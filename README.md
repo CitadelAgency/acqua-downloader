@@ -18,7 +18,7 @@ Requires 64-bit Windows 10 or 11.
 2. The app is not notarized, so macOS blocks the first launch. Open it once, then go to **System Settings > Privacy & Security** and click **Open Anyway**.
 3. To capture downloads from your browser, open **Settings > Show extension folder** in the app. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`), turn on **Developer mode** and drag the `extension` folder onto the page.
 
-Requires macOS 13 or later, on Apple silicon or Intel. To uninstall, run `acqua unregister-host` from `/Applications/Acqua Downloader.app/Contents/MacOS`, then delete the app, `~/Library/LaunchAgents/com.dlm.app.plist` and `~/Library/Application Support/Acqua Downloader`.
+Requires macOS 13 or later, on Apple silicon or Intel. To uninstall, run `"/Applications/Acqua Downloader.app/Contents/MacOS/acqua" unregister-host`, then delete the app, `~/Library/LaunchAgents/com.dlm.app.plist` and `~/Library/Application Support/Acqua Downloader`.
 
 The interface is in English, and Portuguese is available in Settings.
 
